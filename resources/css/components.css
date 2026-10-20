@@ -1,0 +1,79 @@
+.app-sidebar { overflow-y: auto; }
+.sidebar-heading {
+    font-size: .68rem; letter-spacing: .08em; text-transform: uppercase;
+    color: rgba(255, 255, 255, .45); padding: .9rem .9rem .3rem;
+}
+
+.stat-icon {
+    width: 44px; height: 44px; border-radius: 12px;
+    display: inline-flex; align-items: center; justify-content: center; font-size: 1.3rem;
+}
+.chart-box { position: relative; height: 280px; }
+.table-nowrap th, .table-nowrap td { white-space: nowrap; }
+.json-pre {
+    font-size: .75rem; max-height: 200px; overflow: auto;
+    background: #f8f9fa; padding: .5rem; border-radius: .4rem; margin: 0;
+}
+
+.avatar-circle {
+    width: 44px; height: 44px; border-radius: 50%; background: var(--app-navy); color: #fff;
+    display: inline-flex; align-items: center; justify-content: center; font-weight: 600; flex-shrink: 0;
+}
+
+/* Mobile */
+.list-card { display: block; text-decoration: none; color: inherit; }
+.list-card:active { background: #f1f3f6; }
+.score-big { font-size: 2.6rem; font-weight: 700; line-height: 1; color: var(--app-navy); }
+.touch-input { min-height: 48px; font-size: 1.05rem; }
+.mobile-bottom-nav a { position: relative; }
+.nav-badge {
+    position: absolute; top: .1rem; left: calc(50% + .45rem);
+    min-width: 1.1rem; height: 1.1rem; padding: 0 .25rem; border-radius: 1rem;
+    background: #dc3545; color: #fff; font-size: .65rem; line-height: 1.1rem; text-align: center;
+}
+.form-action-bar {
+    position: sticky; bottom: 4.7rem; z-index: 1025; background: #fff;
+    border: 1px solid #dee2e6; border-radius: .8rem; padding: .6rem;
+    box-shadow: 0 .25rem 1rem rgba(0, 0, 0, .1);
+}
+
+/* Timeline riwayat persetujuan */
+.timeline { border-left: 2px solid #dee2e6; margin-left: .5rem; padding-left: 1.1rem; }
+.timeline-item { position: relative; padding-bottom: 1rem; }
+.timeline-item::before {
+    content: ''; position: absolute; left: -1.5rem; top: .35rem;
+    width: .7rem; height: .7rem; border-radius: 50%; background: var(--app-navy);
+}
+
+
+/* ===== Shell aplikasi mobile (dipusatkan seperti app HP) ===== */
+body.mobile-shell {
+    background: #e9edf3;
+}
+.mobile-app {
+    max-width: 448px;
+    min-height: 100vh;
+    margin: 0 auto;
+    background: #f4f6f9;
+    position: relative;
+    box-shadow: 0 0 2rem rgba(0, 0, 0, .08);
+}
+.mobile-app .mobile-topbar {
+    position: sticky;
+    top: 0;
+}
+.mobile-app .mobile-content {
+    max-width: 100%;
+    padding-bottom: 6rem !important;
+}
+/* Bottom nav dan bar aksi form dikunci selebar kolom aplikasi */
+.mobile-app .mobile-bottom-nav {
+    left: 50%;
+    right: auto;
+    width: 100%;
+    max-width: 448px;
+    transform: translateX(-50%);
+}
+.mobile-app .form-action-bar {
+    bottom: 4.7rem;
+}

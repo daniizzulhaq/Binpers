@@ -1,0 +1,189 @@
+// ---- Variabel tema (biru tua, putih, abu-abu netral) ----
+$primary: #0b2a5b;
+$secondary: #6b7685;
+$body-bg: #f4f6f9;
+$body-color: #1f2937;
+$border-radius: 0.6rem;
+$font-family-sans-serif: system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+
+@import 'bootstrap/scss/bootstrap';
+
+:root {
+    --app-navy: #0b2a5b;
+    --app-navy-dark: #071b3d;
+    --sidebar-width: 260px;
+}
+
+// ---- Brand ----
+.brand-badge {
+    width: 56px;
+    height: 56px;
+    border-radius: 16px;
+    background: var(--app-navy);
+    color: #fff;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.6rem;
+
+    &.brand-badge-sm {
+        width: 38px;
+        height: 38px;
+        border-radius: 10px;
+        font-size: 1.1rem;
+        background: rgba(255, 255, 255, 0.15);
+    }
+}
+
+// ---- Halaman login ----
+.auth-bg {
+    background: linear-gradient(160deg, var(--app-navy-dark) 0%, var(--app-navy) 45%, #e9edf3 45%, #f4f6f9 100%);
+    min-height: 100vh;
+}
+.auth-card {
+    max-width: 420px;
+}
+
+// ---- Layout desktop (HRD, Kapolres, Wakapolres) ----
+.app-sidebar {
+    position: fixed;
+    inset: 0 auto 0 0;
+    width: var(--sidebar-width);
+    background: var(--app-navy);
+    color: #fff;
+    z-index: 1030;
+}
+.app-offcanvas {
+    background: var(--app-navy);
+    color: #fff;
+    width: var(--sidebar-width) !important;
+}
+.app-main {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+
+    @include media-breakpoint-up(lg) {
+        margin-left: var(--sidebar-width);
+    }
+}
+.app-topbar {
+    background: #fff;
+    border-bottom: 1px solid $gray-300;
+    position: sticky;
+    top: 0;
+    z-index: 1020;
+}
+.sidebar-brand {
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+.sidebar-link {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.65rem 0.9rem;
+    border-radius: 0.5rem;
+    color: rgba(255, 255, 255, 0.78);
+    text-decoration: none;
+    margin-bottom: 0.15rem;
+
+    &:hover {
+        background: rgba(255, 255, 255, 0.08);
+        color: #fff;
+    }
+    &.active {
+        background: rgba(255, 255, 255, 0.16);
+        color: #fff;
+        font-weight: 600;
+    }
+}
+.sidebar-footer {
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+    color: rgba(255, 255, 255, 0.75);
+}
+
+// ---- Layout mobile (Kabag/Kasat/Kasi/Kanit dan Anggota) ----
+.mobile-topbar {
+    background: var(--app-navy);
+    color: #fff;
+    padding: 0.9rem 1rem;
+    position: sticky;
+    top: 0;
+    z-index: 1020;
+}
+.mobile-content {
+    padding-bottom: 5.5rem !important;
+    max-width: 720px;
+}
+.mobile-bottom-nav {
+    position: fixed;
+    inset: auto 0 0 0;
+    background: #fff;
+    border-top: 1px solid $gray-300;
+    display: flex;
+    justify-content: space-around;
+    padding: 0.35rem 0 calc(0.35rem + env(safe-area-inset-bottom));
+    z-index: 1030;
+
+    a,
+    button {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 0.1rem;
+        padding: 0.4rem 0;
+        font-size: 0.72rem;
+        color: $secondary;
+        text-decoration: none;
+        background: none;
+        border: 0;
+
+        i {
+            font-size: 1.35rem;
+        }
+        &.active {
+            color: var(--app-navy);
+            font-weight: 600;
+        }
+    }
+    form {
+        flex: 1;
+        display: flex;
+    }
+}
+// ---- Sidebar: judul seksi ----
+.sidebar-section {
+    font-size: 0.7rem;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: rgba(255, 255, 255, 0.5);
+    padding: 0.9rem 0.9rem 0.3rem;
+}
+
+// ---- Bar tombol form penilaian ----
+// Memakai position: sticky sehingga selalu berada di dalam area konten
+// (tidak menimpa sidebar di desktop).
+.action-bar {
+    position: sticky;
+    bottom: 0.75rem;
+    z-index: 1010;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.75rem 1rem;
+    background: #fff;
+    border: 1px solid $gray-300;
+    border-radius: $border-radius;
+    box-shadow: 0 -2px 12px rgba(0, 0, 0, 0.08);
+
+    // Di mobile, naik di atas bottom nav.
+    &.action-bar-mobile {
+        bottom: calc(4.6rem + env(safe-area-inset-bottom));
+
+        .btn {
+            flex: 1;
+        }
+    }
+}
