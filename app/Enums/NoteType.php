@@ -81,4 +81,19 @@ enum NoteType: string
             ? [self::Positive, self::Negative]
             : [];
     }
+
+     public function hasPoints(): bool
+    {
+        return $this !== self::Violation;
+    }
+
+    /** Arah poin: apresiasi menambah, teguran mengurangi. */
+    public function sign(): int
+    {
+        return match ($this) {
+            self::Positive => 1,
+            self::Negative => -1,
+            self::Violation => 0,
+        };
+    }
 }

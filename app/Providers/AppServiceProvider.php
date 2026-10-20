@@ -4,11 +4,12 @@ namespace App\Providers;
 
 use App\Enums\AssessmentStatus;
 use App\Models\Assessment;
-use App\Models\AssessmentAuthorization;
 use App\Models\AssessmentPeriod;
 use App\Models\PerformanceNote;
-use App\Models\Reward;
+use App\Services\AssessorScopeService;
+use App\Services\MonthlyScoreService;
 use Illuminate\Pagination\Paginator;
+
 use Illuminate\Support\Facades\URL;
 use Illuminate\Support\Facades\View;
 use Illuminate\Support\ServiceProvider;
@@ -30,7 +31,7 @@ class AppServiceProvider extends ServiceProvider
             URL::forceScheme('https');
         }
 
-        // Data beranda penilai (Kabag, Kasat, Kasi, Kanit).
+        // Data beranda penilai (Kabag, Kasat, Kasi, Kapolsek, Wakapolsek, Kanit).
         View::composer('dashboards.assessor', function ($view) {
             $me = auth()->user()?->personnel;
 
@@ -59,8 +60,9 @@ class AppServiceProvider extends ServiceProvider
             $view->with('ah', [
                 'me' => $me,
                 'period' => $period,
-                'binaan' => AssessmentAuthorization::effective()
-                    ->where('assessor_id', $me->id)
+                // Anggota yang wajib dinilai menurut aturan role.
+                'binaan' => app(AssessorScopeService::class)
+                    ->mandatoryQuery($me)
                     ->count(),
                 'status' => $status,
                 'revisions' => Assessment::with(['assessee.user', 'period:id,name'])
@@ -81,8 +83,7 @@ class AppServiceProvider extends ServiceProvider
             ]);
         });
 
-        // Data beranda anggota: hanya milik pengguna yang login,
-        // hanya penilaian berstatus final.
+        // Data beranda anggota: nilai bulanan (penilaian + catatan kinerja).
         View::composer('dashboards.member', function ($view) {
             $user = auth()->user();
             $me = $user?->personnel;
@@ -98,22 +99,22 @@ class AppServiceProvider extends ServiceProvider
                 'currentAssignment.position',
             ]);
 
-            $results = Assessment::with('period:id,name')
-                ->select(['id', 'assessment_period_id', 'final_score', 'grade', 'finalized_at'])
-                ->where('assessee_id', $me->id)
-                ->where('status', AssessmentStatus::Finalized->value)
-                ->latest('finalized_at')
+            $scores = app(MonthlyScoreService::class);
+
+            $periods = AssessmentPeriod::whereDate('start_date', '<=', today())
+                ->orderByDesc('start_date')
                 ->limit(4)
                 ->get();
 
-            $points = $me->totalPoints();
+            $current = $periods->first();
 
-            $nextReward = Reward::where('is_active', true)
-                ->where('min_points', '>', $points)
-                ->orderBy('min_points')
-                ->first();
+            $history = $periods->map(fn ($p) => ['period' => $p] + $scores->forPersonnel($p, $me));
 
             $noteCounts = PerformanceNote::where('subject_id', $me->id)
+                ->when($current, fn ($q) => $q->whereBetween('incident_date', [
+                    $current->start_date->toDateString(),
+                    $current->end_date->toDateString(),
+                ]))
                 ->toBase()
                 ->selectRaw('type, COUNT(*) as total')
                 ->groupBy('type')
@@ -121,9 +122,9 @@ class AppServiceProvider extends ServiceProvider
 
             $view->with('home', [
                 'me' => $me,
-                'results' => $results,
-                'points' => $points,
-                'nextReward' => $nextReward,
+                'current' => $current,
+                'score' => $history->first(),
+                'history' => $history,
                 'noteCounts' => $noteCounts,
                 'unread' => $user->unreadNotifications()->count(),
             ]);
@@ -136,7 +137,7 @@ class AppServiceProvider extends ServiceProvider
 
             $view->with('myNotes', $me
                 ? PerformanceNote::with([
-                    'author.user',
+                    'authorUser',
                     'author.currentAssignment.position',
                 ])
                     ->where('subject_id', $me->id)
@@ -166,7 +167,7 @@ class AppServiceProvider extends ServiceProvider
                     ->pluck('total', 'type'),
 
                 'recentNotes' => PerformanceNote::with([
-                    'author.user',
+                    'authorUser',
                     'author.currentAssignment.position',
                     'subject.user',
                     'unit',

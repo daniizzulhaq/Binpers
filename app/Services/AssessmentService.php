@@ -6,7 +6,6 @@ use App\Enums\ApprovalAction;
 use App\Enums\AssessmentStatus;
 use App\Models\Assessment;
 use App\Models\AssessmentApproval;
-use App\Models\AssessmentAuthorization;
 use App\Models\AssessmentDetail;
 use App\Models\AssessmentPeriod;
 use App\Models\Personnel;
@@ -25,17 +24,14 @@ class AssessmentService
     public function __construct(
         private ScoreCalculator $calculator,
         private PointService $points,
+        private AssessorScopeService $scope,
     ) {
     }
 
-    /** Apakah penilai punya kewenangan aktif untuk menilai anggota ini? */
+    /** Apakah penilai berhak menilai anggota ini (aturan role + kewenangan manual HRD)? */
     public function isAuthorized(Personnel $assessor, Personnel $assessee): bool
     {
-        return $assessor->id !== $assessee->id
-            && AssessmentAuthorization::effective()
-                ->where('assessor_id', $assessor->id)
-                ->where('assessee_id', $assessee->id)
-                ->exists();
+        return $this->scope->canAssess($assessor, $assessee);
     }
 
     /**
@@ -245,7 +241,7 @@ class AssessmentService
                 'finalized_by' => $actor->id,
             ]);
 
-            $this->points->awardForAssessment($a, $actor);
+
 
             return $a;
         });

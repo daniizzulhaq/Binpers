@@ -9,7 +9,10 @@ enum RoleName: string
     case Wakapolres = 'wakapolres';
     case Kabag = 'kabag';
     case Kasat = 'kasat';
+    case KasiPengawas = 'kasi_pengawas';
     case Kasi = 'kasi';
+    case Kapolsek = 'kapolsek';
+    case Wakapolsek = 'wakapolsek';
     case Kanit = 'kanit';
     case Anggota = 'anggota';
 
@@ -21,25 +24,31 @@ enum RoleName: string
             self::Wakapolres => 'Wakapolres',
             self::Kabag => 'Kabag',
             self::Kasat => 'Kasat',
-            self::Kasi => 'Kasi',
-            self::Kanit => 'Kanit',
+            self::KasiPengawas => 'Kasi Propam / Kasiwas',
+            self::Kasi => 'Kasi (Hukum, dll.)',
+            self::Kapolsek => 'Kapolsek',
+            self::Wakapolsek => 'Wakapolsek',
+            self::Kanit => 'Kanit / Kasium / Ka SPKT',
             self::Anggota => 'Anggota',
         };
     }
 
-    /** @return string[] */
+    /** Pimpinan Polres: memakai layout desktop. @return string[] */
     public static function leaders(): array
     {
         return [self::Kapolres->value, self::Wakapolres->value];
     }
 
-    /** @return string[] */
+    /** Penilai struktural: memakai layout mobile. @return string[] */
     public static function assessors(): array
     {
-        return [self::Kabag->value, self::Kasat->value, self::Kasi->value, self::Kanit->value];
+        return [
+            self::Kabag->value, self::Kasat->value, self::KasiPengawas->value, self::Kasi->value,
+            self::Kapolsek->value, self::Wakapolsek->value, self::Kanit->value,
+        ];
     }
 
-    /** Semua role yang boleh mengisi penilaian: pimpinan + penilai struktural. @return string[] */
+    /** Semua role yang boleh mengisi penilaian. @return string[] */
     public static function canAssess(): array
     {
         return [...self::leaders(), ...self::assessors()];

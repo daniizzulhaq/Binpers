@@ -16,6 +16,8 @@ use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\View\View;
+use App\Enums\NoteLevel;
+use App\Models\NotePointSetting;
 use Throwable;
 
 class PerformanceNoteController extends Controller
@@ -87,6 +89,7 @@ class PerformanceNoteController extends Controller
         $user = $request->user();
         $data = $request->validated();
         $type = NoteType::from($data['type']);
+        $level = $type->hasPoints() && ! empty($data['level']) ? NoteLevel::from($data['level']) : null;
 
         $subject = Personnel::with(['user', 'currentAssignment'])->findOrFail($data['subject_id']);
 
@@ -97,7 +100,7 @@ class PerformanceNoteController extends Controller
 
             $authorPersonnelId = $user->personnel?->id;
         } else {
-            // Penilai: hanya Apresiasi/Teguran, untuk anggota binaan.
+            // Penilai: hanya Apresiasi/Teguran, untuk anggota yang boleh dinilainya.
             abort_if($type->hrdOnly(), 403, 'Hanya HRD yang dapat mencatat pelanggaran.');
 
             $me = $this->personnel($request);
@@ -121,6 +124,9 @@ class PerformanceNoteController extends Controller
                 'subject_id' => $subject->id,
                 'unit_id' => $subject->currentAssignment?->organizational_unit_id,
                 'type' => $type,
+                'level' => $level,
+                // Poin disimpan saat dibuat; perubahan pengaturan HRD tidak mengubah catatan lama.
+                'points' => NotePointSetting::signedPoints($type, $level),
                 'title' => $data['title'],
                 'note' => $data['note'],
                 'image_path' => $imagePath,
@@ -137,6 +143,7 @@ class PerformanceNoteController extends Controller
         return redirect()->route('notes.index')->with('success', 'Catatan tersimpan.');
     }
 
+
     public function edit(Request $request, PerformanceNote $note): View
     {
         Gate::authorize('update', $note);
@@ -151,11 +158,21 @@ class PerformanceNoteController extends Controller
         ]);
     }
 
-    public function update(PerformanceNoteRequest $request, PerformanceNote $note): RedirectResponse
+   public function update(PerformanceNoteRequest $request, PerformanceNote $note): RedirectResponse
     {
         Gate::authorize('update', $note);
 
         $attributes = Arr::except($request->validated(), ['image', 'remove_image']);
+
+        $type = NoteType::from($attributes['type']);
+        $level = $type->hasPoints() && ! empty($attributes['level']) ? NoteLevel::from($attributes['level']) : null;
+        $attributes['level'] = $level?->value;
+
+        // Poin dihitung ulang hanya bila jenis atau tingkat berubah.
+        if ($note->type !== $type || $note->level !== $level) {
+            $attributes['points'] = NotePointSetting::signedPoints($type, $level);
+        }
+
         $oldPath = $note->image_path;
         $newPath = null;
 
@@ -201,9 +218,9 @@ class PerformanceNoteController extends Controller
     /** Anggota yang kewenangannya aktif untuk penilai ini. */
     private function subjectsFor(Personnel $me)
     {
-        return Personnel::with(['user', 'currentAssignment.unit'])
-            ->whereIn('id', AssessmentAuthorization::effective()->where('assessor_id', $me->id)->select('assessee_id'))
-            ->whereHas('user', fn ($q) => $q->where('is_active', true))
+        return app(\App\Services\AssessorScopeService::class)
+            ->assesseeQuery($me)
+            ->with(['user', 'currentAssignment.unit'])
             ->orderBy('nrp')
             ->get();
     }

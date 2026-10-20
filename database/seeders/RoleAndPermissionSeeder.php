@@ -20,6 +20,7 @@ class RoleAndPermissionSeeder extends Seeder
             'organization.manage',
             'positions.manage',
             'authorizations.manage',
+            'assessment-rules.manage',
             'periods.manage',
             'criteria.manage',
             'assessments.create',
@@ -36,20 +37,24 @@ class RoleAndPermissionSeeder extends Seeder
             Permission::firstOrCreate(['name' => $name, 'guard_name' => 'web']);
         }
 
+        $assessor = ['assessments.create', 'assessments.view-own'];
+
         $map = [
             RoleName::Hrd->value => [
                 'users.manage', 'personnel.manage', 'organization.manage', 'positions.manage',
-                'authorizations.manage', 'periods.manage', 'criteria.manage',
+                'authorizations.manage', 'assessment-rules.manage', 'periods.manage', 'criteria.manage',
                 'assessments.approve', 'assessments.finalize',
                 'rewards.manage', 'reports.view', 'analytics.view', 'audit-logs.view',
             ],
-            // Pimpinan memeriksa penilaian orang lain DAN boleh menilai langsung.
             RoleName::Kapolres->value => ['assessments.create', 'assessments.approve', 'reports.view', 'analytics.view'],
             RoleName::Wakapolres->value => ['assessments.create', 'assessments.approve', 'reports.view', 'analytics.view'],
-            RoleName::Kabag->value => ['assessments.create', 'assessments.view-own'],
-            RoleName::Kasat->value => ['assessments.create', 'assessments.view-own'],
-            RoleName::Kasi->value => ['assessments.create', 'assessments.view-own'],
-            RoleName::Kanit->value => ['assessments.create', 'assessments.view-own'],
+            RoleName::Kabag->value => $assessor,
+            RoleName::Kasat->value => $assessor,
+            RoleName::KasiPengawas->value => $assessor,
+            RoleName::Kasi->value => $assessor,
+            RoleName::Kapolsek->value => $assessor,
+            RoleName::Wakapolsek->value => $assessor,
+            RoleName::Kanit->value => $assessor,
             RoleName::Anggota->value => ['assessments.view-own'],
         ];
 

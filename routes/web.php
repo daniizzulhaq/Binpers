@@ -21,6 +21,8 @@ use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\MyNoteController;
 use App\Http\Controllers\ReportController;
 use App\Http\Controllers\ReviewController;
+use App\Http\Controllers\Hrd\NotePointSettingController;
+use App\Http\Controllers\MonthlyRecapController;
 use App\Http\Controllers\NoteImageController;
 use App\Http\Controllers\PerformanceNoteController;
 use Illuminate\Support\Facades\Route;
@@ -73,9 +75,13 @@ Route::middleware(['auth', 'active'])->group(function () {
     // ---------------- HRD ----------------
     Route::middleware('role:'.RoleName::Hrd->value)
         ->prefix('hrd')->name('hrd.')
+
         ->group(function () {
             Route::get('/dashboard', [DashboardController::class, 'hrd'])->name('dashboard');
-
+Route::middleware('permission:periods.manage')->group(function () {
+                Route::get('poin-catatan', [NotePointSettingController::class, 'edit'])->name('note-points.edit');
+                Route::put('poin-catatan', [NotePointSettingController::class, 'update'])->name('note-points.update');
+            });
             Route::middleware('permission:users.manage')->group(function () {
                 Route::get('users', [UserController::class, 'index'])->name('users.index');
                 Route::put('users/{user}', [UserController::class, 'update'])->name('users.update');
@@ -136,7 +142,10 @@ Route::middleware(['auth', 'active'])->group(function () {
     // ---------------- Laporan & pemeriksaan (HRD, Kapolres, Wakapolres) ----------------
     Route::get('laporan', [ReportController::class, 'index'])
         ->middleware('permission:reports.view')->name('reports.index');
-
+    Route::get('rekap-bulanan', [MonthlyRecapController::class, 'index'])
+        ->middleware('permission:reports.view')->name('recap.index');
+    Route::post('rekap-bulanan/{period}/kunci', [MonthlyRecapController::class, 'lock'])
+        ->middleware('permission:periods.manage')->name('recap.lock');
     Route::middleware('permission:assessments.approve')
         ->prefix('pemeriksaan')->name('review.')
         ->group(function () {

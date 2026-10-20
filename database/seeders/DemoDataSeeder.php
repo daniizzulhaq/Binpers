@@ -10,7 +10,6 @@ use App\Models\AssessmentPeriod;
 use App\Models\OrganizationalUnit;
 use App\Models\Personnel;
 use App\Models\Position;
-use App\Models\Reward;
 use App\Models\User;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Hash;
@@ -58,8 +57,12 @@ class DemoDataSeeder extends Seeder
 
         foreach ($people as [$username, $nrp, $rank, $unit, $position]) {
             $user = User::where('username', $username)->firstOrFail();
+
             $personnel = Personnel::updateOrCreate(['user_id' => $user->id], [
-                'nrp' => $nrp, 'rank' => $rank, 'gender' => 'L', 'join_date' => '2015-01-01',
+                'nrp' => $nrp,
+                'rank' => $rank,
+                'gender' => 'L',
+                'join_date' => '2015-01-01',
             ]);
 
             if (! $personnel->currentAssignment) {
@@ -71,45 +74,44 @@ class DemoDataSeeder extends Seeder
             }
         }
 
-        // ---- Kewenangan menilai (kanit menilai lintas unit: anggota di BAGOPS) ----
-        $pairs = [
-            'kabag' => ['anggota'],
-            'kasat' => ['anggota2', 'kanit'],
-            'kasi' => ['anggota3'],
-            'kanit' => ['anggota2', 'anggota'],
-        ];
+        // ---- Kewenangan tambahan (manual) ----
+        // Hak menilai utama sudah otomatis dari aturan role (AssessmentRuleSeeder).
+        // Contoh pengecualian: Kanit diberi kewenangan menilai anggota di Bagian Operasional (lintas unit).
         $personnelId = fn (string $username) => Personnel::whereHas('user', fn ($q) => $q->where('username', $username))->value('id');
 
-        foreach ($pairs as $assessor => $assessees) {
-            foreach ($assessees as $assessee) {
-                AssessmentAuthorization::updateOrCreate(
-                    ['assessor_id' => $personnelId($assessor), 'assessee_id' => $personnelId($assessee)],
-                    ['is_active' => true, 'notes' => 'Data demo']
-                );
-            }
-        }
+        AssessmentAuthorization::updateOrCreate(
+            ['assessor_id' => $personnelId('kanit'), 'assessee_id' => $personnelId('anggota')],
+            ['is_active' => true, 'notes' => 'Data demo: kewenangan tambahan lintas unit']
+        );
 
-        // ---- Periode (kuartal berjalan) + kriteria contoh ----
+        // ---- Periode bulan berjalan + kriteria ----
         $now = now();
+
         $period = AssessmentPeriod::firstOrCreate(
-            ['name' => "Triwulan {$now->quarter} {$now->year}"],
+            ['name' => $now->copy()->locale('id')->translatedFormat('F Y')],
             [
-                'start_date' => $now->copy()->startOfQuarter()->toDateString(),
-                'end_date' => $now->copy()->endOfQuarter()->toDateString(),
+                'start_date' => $now->copy()->startOfMonth()->toDateString(),
+                'end_date' => $now->copy()->endOfMonth()->toDateString(),
                 'status' => PeriodStatus::Open,
                 'description' => 'Periode demo.',
             ]
         );
 
         if ($period->criteria()->doesntExist()) {
+            // Bobot dapat diubah HRD; ini contoh, bukan ketentuan resmi.
             $criteria = [
-                ['Disiplin', 25], ['Tanggung Jawab', 20], ['Kerja Sama', 15],
-                ['Inisiatif', 15], ['Pelayanan Masyarakat', 15], ['Integritas', 10],
+                ['Disiplin dan Sikap Tampang', 25, 'Tepat waktu, tertib menjalankan dinas, seragam dan atribut lengkap, serta rambut dan penampilan rapi.'],
+                ['Tanggung Jawab dan Hasil Kerja', 20, 'Menyelesaikan tugas sampai tuntas, tepat waktu, dengan hasil yang benar dan lengkap.'],
+                ['Inisiatif dan Kepedulian', 15, 'Peka terhadap kebutuhan tugas, bertindak sesuai kewenangan tanpa selalu menunggu perintah, serta memberikan solusi.'],
+                ['Etika dan Kerja Sama', 15, 'Sopan kepada pimpinan, rekan, dan bawahan; mau membantu; serta menerima koreksi dengan baik.'],
+                ['Pelayanan kepada Masyarakat', 15, 'Ramah, responsif, membantu masyarakat, dan tidak mempersulit pelayanan.'],
+                ['Integritas', 10, 'Jujur dalam laporan dan pelaksanaan tugas, tidak meminta imbalan, serta tidak menyalahgunakan kewenangan.'],
             ];
-            foreach ($criteria as $i => [$name, $weight]) {
+
+            foreach ($criteria as $i => [$name, $weight, $indicator]) {
                 $period->criteria()->create([
                     'name' => $name,
-                    'description' => 'Contoh kriteria, bukan ketentuan resmi.',
+                    'description' => $indicator,
                     'weight' => $weight,
                     'min_score' => 0,
                     'max_score' => 100,
@@ -117,10 +119,6 @@ class DemoDataSeeder extends Seeder
                 ]);
             }
         }
-
-        // ---- Reward contoh ----
-        Reward::firstOrCreate(['name' => 'Piagam Penghargaan'], ['min_points' => 100, 'description' => 'Contoh apresiasi.', 'is_active' => true]);
-        Reward::firstOrCreate(['name' => 'Penghargaan Anggota Terbaik'], ['min_points' => 300, 'description' => 'Contoh apresiasi.', 'is_active' => true]);
     }
 
     private function unit(string $code, string $name, UnitType $type, ?OrganizationalUnit $parent = null): OrganizationalUnit

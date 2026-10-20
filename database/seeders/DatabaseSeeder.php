@@ -11,11 +11,14 @@ class DatabaseSeeder extends Seeder
         $this->call([
             RoleAndPermissionSeeder::class,
             UserSeeder::class,
+            AssessmentRuleSeeder::class,
         ]);
 
-        // Data demo hanya untuk lingkungan pengembangan.
         if (app()->environment('local', 'testing')) {
-            $this->call(DemoDataSeeder::class);
+            $this->call([
+                DemoDataSeeder::class,
+                StructureDemoSeeder::class,
+            ]);
         }
     }
 }

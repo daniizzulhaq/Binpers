@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\NoteLevel;
 use App\Enums\NoteType;
 use App\Models\Concerns\Auditable;
 use Illuminate\Database\Eloquent\Model;
@@ -13,13 +14,15 @@ class PerformanceNote extends Model
 
     protected $fillable = [
         'author_id', 'author_user_id', 'subject_id', 'unit_id',
-        'type', 'title', 'note', 'image_path', 'incident_date',
+        'type', 'level', 'points', 'title', 'note', 'image_path', 'incident_date',
     ];
 
     protected function casts(): array
     {
         return [
             'type' => NoteType::class,
+            'level' => NoteLevel::class,
+            'points' => 'integer',
             'incident_date' => 'date',
         ];
     }
@@ -50,10 +53,15 @@ class PerformanceNote extends Model
         return $this->authorUser?->name ?? $this->author?->user?->name ?? '—';
     }
 
-        /** Jabatan pencatat; bila pencatat tidak punya data personel (mis. HRD) ditampilkan "HRD". */
+    /** Jabatan pencatat; bila pencatat tidak punya data personel (mis. HRD) ditampilkan "HRD". */
     public function authorPosition(): ?string
     {
         return $this->author?->currentAssignment?->position?->name
             ?? ($this->author_id === null ? 'HRD' : null);
+    }
+
+    public function levelLabel(): ?string
+    {
+        return $this->level?->label($this->type);
     }
 }

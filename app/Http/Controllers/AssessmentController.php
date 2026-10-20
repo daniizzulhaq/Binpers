@@ -11,6 +11,7 @@ use App\Models\Personnel;
 use App\Services\AssessmentService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use App\Services\AssessorScopeService;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\View\View;
 
@@ -21,7 +22,7 @@ class AssessmentController extends Controller
     }
 
     /** Daftar anggota yang menjadi kewenangan penilai pada periode yang sedang dibuka. */
-    public function index(Request $request): View
+    public function index(Request $request, AssessorScopeService $scope): View
     {
         $me = $this->personnel($request);
         $period = AssessmentPeriod::open()->first();
@@ -30,27 +31,40 @@ class AssessmentController extends Controller
             ? Assessment::where('assessment_period_id', $period->id)->where('assessor_id', $me->id)->get()->keyBy('assessee_id')
             : collect();
 
+        $mandatory = $scope->mandatoryQuery($me)->pluck('id')->flip();
+        $total = $scope->assesseeQuery($me)->count();
+
+        $kind = $request->input('kind', $mandatory->isNotEmpty() ? 'wajib' : 'semua');
         $status = $request->string('status')->value();
 
-        $authorizations = AssessmentAuthorization::effective()
-            ->where('assessor_id', $me->id)
-            ->with(['assessee.user', 'assessee.currentAssignment.unit', 'assessee.currentAssignment.position'])
+        $people = $scope->assesseeQuery($me)
+            ->with(['user.roles', 'currentAssignment.unit', 'currentAssignment.position'])
             ->when($request->filled('q'), function ($q) use ($request) {
                 $term = '%'.$request->string('q')->trim().'%';
-                $q->whereHas('assessee', fn ($a) => $a->where('nrp', 'like', $term)
+                $q->where(fn ($w) => $w->where('nrp', 'like', $term)
                     ->orWhereHas('user', fn ($u) => $u->where('name', 'like', $term)));
             })
-            ->when($status === 'belum', fn ($q) => $q->whereNotIn('assessee_id', $assessed->keys()))
+            ->when($kind === 'wajib', fn ($q) => $q->whereIn('personnel.id', $mandatory->keys()))
+            ->when($kind === 'lintas', fn ($q) => $q->whereNotIn('personnel.id', $mandatory->keys()))
+            ->when($status === 'belum', fn ($q) => $q->whereNotIn('personnel.id', $assessed->keys()))
             ->when($status && AssessmentStatus::tryFrom($status), fn ($q) => $q->whereIn(
-                'assessee_id',
+                'personnel.id',
                 $assessed->filter(fn ($a) => $a->status->value === $status)->keys()
             ))
-            ->paginate(12)->withQueryString();
+            ->orderBy('nrp')
+            ->paginate(15)->withQueryString();
 
         return view('assessor.assessments.index', [
             'period' => $period,
-            'authorizations' => $authorizations,
+            'people' => $people,
             'assessed' => $assessed,
+            'mandatory' => $mandatory,
+            'kind' => $kind,
+            'counts' => [
+                'wajib' => $mandatory->count(),
+                'lintas' => max(0, $total - $mandatory->count()),
+                'semua' => $total,
+            ],
             'statuses' => AssessmentStatus::cases(),
         ]);
     }

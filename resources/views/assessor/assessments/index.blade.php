@@ -5,37 +5,50 @@
 
 @section('content')
     @php
-        $desktop = auth()->user()->usesDesktopLayout();
+        $d = auth()->user()->usesDesktopLayout();
+        $tabs = [
+            'wajib' => 'Wajib',
+            'lintas' => 'Lintas Unit',
+            'semua' => 'Semua',
+        ];
     @endphp
 
-    @if (! $period)
-        <div class="alert alert-warning">
-            <i class="bi bi-exclamation-triangle me-1"></i>
-            Belum ada periode penilaian yang dibuka. Hubungi HRD.
+    @if ($period)
+        <div class="card border-0 shadow-sm mb-3">
+            <div class="card-body p-3 d-flex justify-content-between align-items-center gap-2">
+                <div class="min-w-0">
+                    <div class="small text-muted">Periode dibuka</div>
+                    <div class="fw-semibold text-break">{{ $period->name }}</div>
+                </div>
+                <span class="badge text-bg-success">Dibuka</span>
+            </div>
         </div>
     @else
-        <div class="card border-0 shadow-sm mb-3">
-            <div class="card-body py-3 d-flex flex-wrap align-items-center gap-2">
-                <div>
-                    <div class="small text-muted">Periode aktif</div>
-                    <div class="fw-semibold">{{ $period->name }}</div>
-                </div>
-                <div class="ms-auto small text-muted">
-                    {{ $period->start_date->format('d/m/Y') }} – {{ $period->end_date->format('d/m/Y') }}
-                </div>
-            </div>
+        <div class="alert alert-warning small">
+            Belum ada periode penilaian yang dibuka. Anda tetap dapat menulis Catatan Kinerja.
         </div>
     @endif
 
+    {{-- Tab wajib / lintas / semua --}}
+    <ul class="nav nav-pills nav-fill gap-1 mb-3">
+        @foreach ($tabs as $key => $label)
+            <li class="nav-item">
+                <a href="{{ route('assessor.assessments.index', array_merge(request()->only('q', 'status'), ['kind' => $key])) }}"
+                   class="nav-link py-2 {{ $kind === $key ? 'active' : 'bg-white border' }}">
+                    {{ $label }}
+                    <span class="badge {{ $kind === $key ? 'text-bg-light' : 'text-bg-secondary' }} ms-1">{{ $counts[$key] }}</span>
+                </a>
+            </li>
+        @endforeach
+    </ul>
+
     <form method="GET" class="row g-2 mb-3">
-        <div class="col-12 col-md-6 col-xl-5">
-            <div class="input-group">
-                <span class="input-group-text"><i class="bi bi-search"></i></span>
-                <input type="search" name="q" value="{{ request('q') }}" class="form-control" placeholder="Cari nama atau NRP">
-            </div>
+        <input type="hidden" name="kind" value="{{ $kind }}">
+        <div class="{{ $d ? 'col-12 col-md-6' : 'col-12' }}">
+            <input type="search" name="q" value="{{ request('q') }}" class="form-control" placeholder="Cari nama atau NRP">
         </div>
-        <div class="col-8 col-md-4 col-xl-3">
-            <select name="status" class="form-select">
+        <div class="{{ $d ? 'col-8 col-md-4' : 'col-8' }}">
+            <select name="status" class="form-select" aria-label="Status penilaian">
                 <option value="">Semua status</option>
                 <option value="belum" @selected(request('status') === 'belum')>Belum dinilai</option>
                 @foreach ($statuses as $s)
@@ -43,58 +56,52 @@
                 @endforeach
             </select>
         </div>
-        <div class="col-4 col-md-2">
+        <div class="{{ $d ? 'col-4 col-md-2' : 'col-4' }}">
             <button class="btn btn-primary w-100">Filter</button>
         </div>
     </form>
 
-    <div class="row g-3">
-        @forelse ($authorizations as $auth)
+    <div class="row g-2">
+        @forelse ($people as $p)
             @php
-                $p = $auth->assessee;
-                $as = $assessed->get($p->id);
-                $assignment = $p->currentAssignment;
+                $a = $assessed->get($p->id);
+                $cur = $p->currentAssignment;
+                $isWajib = $mandatory->has($p->id);
             @endphp
-            <div class="{{ $desktop ? 'col-12 col-md-6 col-xl-4' : 'col-12' }}">
+            <div class="{{ $d ? 'col-12 col-lg-6' : 'col-12' }}">
                 <div class="card border-0 shadow-sm h-100">
-                    <div class="card-body">
+                    <div class="card-body p-3">
                         <div class="d-flex justify-content-between align-items-start gap-2">
                             <div class="min-w-0">
-                                <div class="fw-semibold">{{ $p->user->name }}</div>
-                                <div class="small text-muted">
-                                    {{ $p->nrp }}@if ($p->rank) · {{ $p->rank }}@endif
-                                </div>
+                                <div class="fw-semibold text-break">{{ $p->user->name }}</div>
+                                <div class="small text-muted">{{ $p->rank ?: '-' }} · NRP {{ $p->nrp }}</div>
                             </div>
-                            @if ($as)
-                                <span class="badge text-bg-{{ $as->status->color() }}">{{ $as->status->label() }}</span>
+                            <span class="badge {{ $isWajib ? 'text-bg-primary' : 'text-bg-light border' }}">
+                                {{ $isWajib ? 'Wajib' : 'Lintas unit' }}
+                            </span>
+                        </div>
+
+                        <div class="small text-muted mt-1 text-break">
+                            {{ $cur?->position?->name ?? '-' }} · {{ $cur?->unit?->name ?? '-' }}
+                        </div>
+
+                        <div class="mt-2">
+                            @if ($a)
+                                <span class="badge text-bg-{{ $a->status->color() }}">{{ $a->status->label() }}</span>
                             @else
-                                <span class="badge text-bg-light border text-muted">Belum dinilai</span>
+                                <span class="badge text-bg-secondary">Belum dinilai</span>
                             @endif
                         </div>
 
-                        <div class="small text-muted mt-2">
-                            <i class="bi bi-diagram-3 me-1"></i>{{ $assignment?->unit?->name ?? '—' }}
-                            @if ($assignment?->position) · {{ $assignment->position->name }} @endif
-                        </div>
-
-                        @if ($as && $as->final_score !== null)
-                            <div class="small mt-2">
-                                Nilai: <strong>{{ $as->final_score }}</strong>
-                                @if ($as->grade) <span class="text-muted">({{ $as->grade }})</span> @endif
-                            </div>
-                        @endif
-
-                        <div class="mt-3">
-                            @if ($as && ! $as->status->editable())
-                                <a href="{{ route('assessor.assessments.show', $as) }}" class="btn btn-outline-primary w-100">
-                                    <i class="bi bi-eye me-1"></i>Lihat Penilaian
-                                </a>
+                        <div class="d-flex gap-2 mt-3">
+                            @if ($a && ! $a->status->editable())
+                                <a href="{{ route('assessor.assessments.show', $a) }}" class="btn btn-sm btn-outline-primary flex-fill">Lihat</a>
                             @elseif ($period)
-                                <a href="{{ route('assessor.assessments.form', [$period, $p]) }}" class="btn btn-primary w-100">
-                                    <i class="bi bi-pencil-square me-1"></i>
-                                    {{ $as ? ($as->status->value === 'revision' ? 'Perbaiki Penilaian' : 'Lanjutkan Draft') : 'Beri Penilaian' }}
+                                <a href="{{ route('assessor.assessments.form', [$period, $p]) }}" class="btn btn-sm btn-primary flex-fill">
+                                    {{ $a ? 'Lanjutkan' : 'Nilai' }}
                                 </a>
                             @endif
+                            <a href="{{ route('notes.create', ['subject_id' => $p->id]) }}" class="btn btn-sm btn-outline-secondary flex-fill">Catat</a>
                         </div>
                     </div>
                 </div>
@@ -102,14 +109,11 @@
         @empty
             <div class="col-12">
                 <div class="card border-0 shadow-sm">
-                    <div class="card-body text-center text-muted py-5">
-                        <i class="bi bi-people fs-1 d-block mb-2"></i>
-                        Tidak ada anggota yang sesuai. Kewenangan menilai ditetapkan oleh HRD.
-                    </div>
+                    <div class="card-body text-center text-muted py-5">Tidak ada personel pada daftar ini.</div>
                 </div>
             </div>
         @endforelse
     </div>
 
-    <div class="mt-3">{{ $authorizations->links() }}</div>
+    <div class="mt-3">{{ $people->links() }}</div>
 @endsection

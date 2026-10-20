@@ -17,6 +17,7 @@ class AssessmentScoreRequest extends FormRequest
     {
         $period = $this->route('period');
         $isSubmit = $this->input('action') === 'submit';
+        $allowed = collect(config('assessment.score_options'))->pluck('value')->all();
 
         $rules = [
             'action' => ['required', Rule::in(['draft', 'submit'])],
@@ -25,9 +26,9 @@ class AssessmentScoreRequest extends FormRequest
             'scores' => ['required', 'array'],
         ];
 
-        // Hanya kriteria milik periode ini yang diberi aturan; skor wajib berada dalam skalanya.
+        // Hanya kriteria milik periode ini; skor wajib salah satu pilihan skala.
         foreach ($period->criteria as $c) {
-            $rules["scores.{$c->id}"] = [$isSubmit ? 'required' : 'nullable', 'numeric', "between:{$c->min_score},{$c->max_score}"];
+            $rules["scores.{$c->id}"] = [$isSubmit ? 'required' : 'nullable', Rule::in($allowed)];
             $rules["notes.{$c->id}"] = ['nullable', 'string', 'max:1000'];
             $rules["evidence.{$c->id}"] = ['nullable', 'file', 'mimes:jpg,jpeg,png,pdf', 'max:'.config('assessment.evidence_max_kb')];
             $rules["remove_evidence.{$c->id}"] = ['nullable', 'boolean'];
@@ -41,10 +42,18 @@ class AssessmentScoreRequest extends FormRequest
         return [function (Validator $validator) {
             foreach ($this->route('period')->criteria as $c) {
                 if ($this->hasFile("evidence.{$c->id}") && blank($this->input("scores.{$c->id}"))) {
-                    $validator->errors()->add("evidence.{$c->id}", "Isi skor {$c->name} terlebih dahulu sebelum mengunggah bukti.");
+                    $validator->errors()->add("evidence.{$c->id}", "Pilih skor {$c->name} terlebih dahulu sebelum mengunggah bukti.");
                 }
             }
         }];
+    }
+
+    public function messages(): array
+    {
+        return [
+            'scores.*.in' => 'Pilih salah satu skor yang tersedia untuk :attribute.',
+            'scores.*.required' => ':attribute belum dipilih.',
+        ];
     }
 
     public function attributes(): array

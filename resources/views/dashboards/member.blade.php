@@ -17,65 +17,78 @@
     @if (! $home)
         <div class="alert alert-info d-flex gap-2 align-items-start">
             <x-icon name="info" :size="20" class="mt-1" />
-            <span>Data personel Anda belum dibuat. Hubungi HRD agar hasil penilaian dan catatan dapat ditampilkan.</span>
+            <span>Data personel Anda belum dibuat. Hubungi HRD agar nilai dan catatan dapat ditampilkan.</span>
         </div>
     @else
         @php
-            $results = $home['results'];
-            $latest = $results->first();
-            $points = $home['points'];
-            $next = $home['nextReward'];
+            $current = $home['current'];
+            $score = $home['score'];
             $positive = (int) ($home['noteCounts']['positive'] ?? 0);
             $negative = (int) ($home['noteCounts']['negative'] ?? 0);
-            $chart = $results->reverse()->values();
+            $violation = (int) ($home['noteCounts']['violation'] ?? 0);
+            $chart = $home['history']->reverse()->values();
         @endphp
 
-        {{-- Nilai terbaru --}}
+        {{-- Nilai bulan ini --}}
         <div class="bp-card p-3 p-md-4 mb-3">
-            <div class="d-flex align-items-center mb-2">
-                <div class="bp-title mb-0">Penilaian Terbaru</div>
-                @if ($latest)
-                    <a href="{{ route('member.results.show', $latest->id) }}" class="small ms-auto">Rincian</a>
+            <div class="d-flex align-items-center mb-1">
+                <div class="bp-title mb-0">Nilai Bulan Ini</div>
+                @if ($score)
+                    <span class="badge ms-auto {{ $score['locked'] ? 'text-bg-dark' : 'text-bg-light border' }}">
+                        {{ $score['locked'] ? 'Final' : 'Sementara' }}
+                    </span>
                 @endif
             </div>
 
-            @if ($latest)
-                @php
-                    $c = $gradeColor($latest->grade);
-                    $score = min(100, max(0, (float) $latest->final_score));
-                @endphp
-                <div class="d-flex align-items-end gap-3">
-                    <div class="display-5 fw-bold lh-1 text-{{ $c }}">{{ number_format((float) $latest->final_score, 2) }}</div>
-                    <div class="pb-1">
-                        <span class="badge text-bg-{{ $c }}">{{ $latest->grade }}</span>
-                        <div class="small text-muted mt-1">{{ $latest->period->name }}</div>
+            @if (! $current)
+                <div class="text-center text-muted py-3 small">Belum ada periode penilaian.</div>
+            @else
+                <div class="small text-muted mb-2">{{ $current->name }}</div>
+
+                @if ($score['total'] === null)
+                    <div class="text-center text-muted py-2">
+                        <x-icon name="hourglass" :size="32" :stroke="1.4" class="mb-1" />
+                        <div class="small">Belum dinilai bulan ini.</div>
+                    </div>
+                @else
+                    @php
+                        $c = $gradeColor($score['grade']);
+                    @endphp
+                    <div class="d-flex align-items-end gap-3">
+                        <div class="display-5 fw-bold lh-1 text-{{ $c }}">{{ number_format($score['total'], 2) }}</div>
+                        <div class="pb-1">
+                            <span class="badge text-bg-{{ $c }}">{{ $score['grade'] }}</span>
+                        </div>
+                    </div>
+                    <div class="progress mt-3" style="height:8px;" role="progressbar"
+                         aria-valuenow="{{ $score['total'] }}" aria-valuemin="0" aria-valuemax="100">
+                        <div class="progress-bar bg-{{ $c }}" style="width: {{ $score['total'] }}%"></div>
+                    </div>
+                @endif
+
+                <div class="row g-0 border-top mt-3 pt-2 text-center small">
+                    <div class="col-4">
+                        <div class="text-muted">Penilaian</div>
+                        <div class="fw-semibold">{{ $score['base'] !== null ? number_format($score['base'], 2) : '–' }}</div>
+                    </div>
+                    <div class="col-4">
+                        <div class="text-muted">Apresiasi</div>
+                        <div class="fw-semibold text-success">+{{ $score['bonus'] }}</div>
+                    </div>
+                    <div class="col-4">
+                        <div class="text-muted">Teguran</div>
+                        <div class="fw-semibold" style="color:#b45309;">−{{ $score['penalty'] }}</div>
                     </div>
                 </div>
-                <div class="progress mt-3" style="height:8px;" role="progressbar"
-                     aria-valuenow="{{ $score }}" aria-valuemin="0" aria-valuemax="100">
-                    <div class="progress-bar bg-{{ $c }}" style="width: {{ $score }}%"></div>
-                </div>
-            @else
-                <div class="text-center text-muted py-3">
-                    <x-icon name="hourglass" :size="34" :stroke="1.4" class="mb-1" />
-                    <div class="small">Belum ada hasil penilaian yang final.</div>
-                </div>
+                @if ($score['assessments'] > 1)
+                    <div class="small text-muted text-center mt-1">Rata-rata dari {{ $score['assessments'] }} penilaian</div>
+                @endif
             @endif
         </div>
 
-                {{-- Statistik ringkas --}}
-        @php
-            $violation = (int) ($home['noteCounts']['violation'] ?? 0);
-        @endphp
+        {{-- Catatan bulan ini --}}
         <div class="row g-2 mb-3">
-            <div class="col-3">
-                <div class="bp-card bp-stat h-100">
-                    <x-icon name="points" :size="24" class="d-block mx-auto mb-1" style="color:var(--bp-navy);" />
-                    <div class="n">{{ number_format($points) }}</div>
-                    <div class="l">Poin</div>
-                </div>
-            </div>
-            <div class="col-3">
+            <div class="col-4">
                 <a href="{{ route('notes.mine', ['type' => 'positive']) }}" class="text-decoration-none d-block h-100">
                     <div class="bp-card bp-stat h-100">
                         <x-icon name="thumbs-up" :size="24" class="d-block mx-auto mb-1 text-success" />
@@ -84,7 +97,7 @@
                     </div>
                 </a>
             </div>
-            <div class="col-3">
+            <div class="col-4">
                 <a href="{{ route('notes.mine', ['type' => 'negative']) }}" class="text-decoration-none d-block h-100">
                     <div class="bp-card bp-stat h-100">
                         <x-icon name="alert" :size="24" class="d-block mx-auto mb-1" style="color:#d97706;" />
@@ -93,7 +106,7 @@
                     </div>
                 </a>
             </div>
-            <div class="col-3">
+            <div class="col-4">
                 <a href="{{ route('notes.mine', ['type' => 'violation']) }}" class="text-decoration-none d-block h-100">
                     <div class="bp-card bp-stat h-100">
                         <x-icon name="file-alert" :size="24" class="d-block mx-auto mb-1 text-danger" />
@@ -104,47 +117,26 @@
             </div>
         </div>
 
-        {{-- Progres apresiasi berikutnya --}}
-        @if ($next)
-            @php
-                $pct = min(100, (int) floor($points / max(1, $next->min_points) * 100));
-            @endphp
-            <div class="bp-card p-3 mb-3">
-                <div class="d-flex justify-content-between align-items-center gap-2 mb-2">
-                    <span class="fw-semibold text-break d-flex align-items-center gap-2">
-                        <x-icon name="trophy" :size="20" style="color:var(--bp-gold);" />{{ $next->name }}
-                    </span>
-                    <span class="small text-muted text-nowrap">{{ number_format($points) }} / {{ number_format($next->min_points) }}</span>
-                </div>
-                <div class="progress" style="height:8px;" role="progressbar"
-                     aria-valuenow="{{ $pct }}" aria-valuemin="0" aria-valuemax="100">
-                    <div class="progress-bar" style="width: {{ $pct }}%;background:var(--bp-gold);"></div>
-                </div>
-                <div class="small text-muted mt-1">
-                    Kurang {{ number_format($next->min_points - $points) }} poin lagi.
-                </div>
-            </div>
-        @endif
-
-        {{-- Tren nilai --}}
+        {{-- Tren nilai bulanan --}}
         @if ($chart->count() > 1)
             <div class="bp-card p-3 mb-3">
-                <div class="bp-title">Tren Nilai</div>
+                <div class="bp-title">Tren Nilai Bulanan</div>
                 <div class="d-flex align-items-end justify-content-around gap-2" style="height:110px;">
-                    @foreach ($chart as $r)
+                    @foreach ($chart as $h)
                         @php
-                            $barH = max(8, min(100, (float) $r->final_score)) * 0.7;
+                            $barH = $h['total'] !== null ? max(8, min(100, $h['total'])) * 0.7 : 6;
                         @endphp
                         <div class="flex-fill text-center">
-                            <div class="small fw-semibold">{{ number_format((float) $r->final_score, 0) }}</div>
-                            <div class="rounded-top bg-{{ $gradeColor($r->grade) }}" style="height: {{ $barH }}px;"></div>
+                            <div class="small fw-semibold">{{ $h['total'] !== null ? number_format($h['total'], 0) : '–' }}</div>
+                            <div class="rounded-top {{ $h['total'] !== null ? 'bg-'.$gradeColor($h['grade']) : 'bg-secondary-subtle' }}"
+                                 style="height: {{ $barH }}px;"></div>
                         </div>
                     @endforeach
                 </div>
                 <div class="d-flex justify-content-around gap-2 border-top pt-1">
-                    @foreach ($chart as $r)
-                        <div class="flex-fill text-center small text-muted text-truncate" title="{{ $r->period->name }}">
-                            {{ $r->period->name }}
+                    @foreach ($chart as $h)
+                        <div class="flex-fill text-center small text-muted text-truncate" title="{{ $h['period']->name }}">
+                            {{ $h['period']->name }}
                         </div>
                     @endforeach
                 </div>
@@ -176,7 +168,6 @@
             @endforeach
         </div>
 
-        {{-- Catatan terbaru --}}
         @include('partials.my-recent-notes')
     @endif
 @endsection
