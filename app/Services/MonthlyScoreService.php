@@ -74,7 +74,8 @@ class MonthlyScoreService
 
         // Poin catatan berdasarkan tanggal kejadian di dalam periode. Penilaian harian yang
         // sudah masuk ke rekap final penilainya tidak dihitung lagi (sudah ada di nilai dasar).
-        $notes = PerformanceNote::whereIn('subject_id', $personnelIds)
+        $notes = PerformanceNote::approved()
+            ->whereIn('subject_id', $personnelIds)
             ->whereBetween('incident_date', [$period->start_date->toDateString(), $period->end_date->toDateString()])
             ->whereNotExists(fn ($q) => $q->selectRaw('1')
                 ->from('assessments')
@@ -100,6 +101,45 @@ class MonthlyScoreService
                 (int) ($n->penalty ?? 0),
                 false,
             )];
+        });
+    }
+
+    /**
+     * Rekap beberapa bulan (triwulan/semester/tahunan): rata-rata nilai total bulanan
+     * dari bulan yang sudah ada nilainya; apresiasi/teguran dijumlahkan.
+     *
+     * @return Collection<int, array{months: array<int, ?float>, scored: int, bonus: int, penalty: int, total: ?float, grade: ?string}>
+     */
+    public function aggregate(Collection $periods, Collection $personnelIds): Collection
+    {
+        if ($personnelIds->isEmpty()) {
+            return collect();
+        }
+
+        $perPeriod = $periods->mapWithKeys(fn (AssessmentPeriod $p) => [$p->id => $this->compute($p, $personnelIds)]);
+
+        return $personnelIds->mapWithKeys(function ($id) use ($periods, $perPeriod) {
+            $months = [];
+            $bonus = $penalty = 0;
+
+            foreach ($periods as $p) {
+                $r = $perPeriod[$p->id]->get($id);
+                $months[$p->id] = $r['total'];
+                $bonus += $r['bonus'];
+                $penalty += $r['penalty'];
+            }
+
+            $scored = collect($months)->filter(fn ($t) => $t !== null);
+            $total = $scored->isEmpty() ? null : round($scored->avg(), 2);
+
+            return [$id => [
+                'months' => $months,
+                'scored' => $scored->count(),
+                'bonus' => $bonus,
+                'penalty' => $penalty,
+                'total' => $total,
+                'grade' => $total === null ? null : $this->calculator->gradeFor($total),
+            ]];
         });
     }
 

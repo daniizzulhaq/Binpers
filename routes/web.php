@@ -25,6 +25,7 @@ use App\Http\Controllers\StructuralReviewController;
 use App\Http\Controllers\Hrd\NotePointSettingController;
 use App\Http\Controllers\MonthlyRecapController;
 use App\Http\Controllers\NoteImageController;
+use App\Http\Controllers\NoteReviewController;
 use App\Http\Controllers\PerformanceNoteController;
 use Illuminate\Support\Facades\Route;
 
@@ -52,6 +53,16 @@ Route::middleware(['auth', 'active'])->group(function () {
 
     // ---------------- Bukti pendukung (otorisasi diperiksa di policy) ----------------
     Route::get('bukti/{detail}', [EvidenceController::class, 'show'])->whereNumber('detail')->name('evidence.show');
+
+    // ---------------- Persetujuan penilaian harian (atasan struktural & pimpinan) ----------------
+    Route::middleware('permission:assessments.approve|assessments.review-structural')
+        ->prefix('persetujuan-harian')->name('note-reviews.')
+        ->group(function () {
+            Route::get('/', [NoteReviewController::class, 'index'])->name('index');
+            Route::post('setujui', [NoteReviewController::class, 'approveMany'])->name('approve-many');
+            Route::post('{note}/setujui', [NoteReviewController::class, 'approve'])->whereNumber('note')->name('approve');
+            Route::post('{note}/tolak', [NoteReviewController::class, 'reject'])->whereNumber('note')->name('reject');
+        });
 
  // ---------------- Catatan Kinerja (sewaktu-waktu) ----------------
     Route::prefix('catatan')->name('notes.')->group(function () {
@@ -145,6 +156,8 @@ Route::middleware('permission:periods.manage')->group(function () {
         ->middleware('permission:reports.view')->name('reports.index');
     Route::get('rekap-bulanan', [MonthlyRecapController::class, 'index'])
         ->middleware('permission:reports.view')->name('recap.index');
+    Route::get('rekap-bulanan/personel/{personnel}', [MonthlyRecapController::class, 'show'])
+        ->whereNumber('personnel')->middleware('permission:reports.view')->name('recap.show');
     Route::post('rekap-bulanan/{period}/kunci', [MonthlyRecapController::class, 'lock'])
         ->middleware('permission:periods.manage')->name('recap.lock');
     // HRD hanya melihat; Kapolres/Wakapolres menyetujui (setujui = langsung final).

@@ -15,11 +15,12 @@ class MyNoteController extends Controller
         $me = $request->user()->personnel;
         abort_if($me === null, 403, 'Data personel Anda belum dibuat. Hubungi HRD.');
 
-        $base = PerformanceNote::query()
+        // Hanya yang sudah disetujui atasan penilai.
+        $base = PerformanceNote::approved()
             ->where('subject_id', $me->id)
             ->when(NoteType::tryFrom((string) $request->input('type')), fn ($q, $t) => $q->where('type', $t->value));
 
-        $counts = PerformanceNote::where('subject_id', $me->id)
+        $counts = PerformanceNote::approved()->where('subject_id', $me->id)
             ->toBase()
             ->selectRaw('type, COUNT(*) as total')
             ->groupBy('type')

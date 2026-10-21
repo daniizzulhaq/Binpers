@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\NoteStatus;
 use App\Enums\NoteType;
 use App\Enums\RoleName;
 use App\Http\Requests\PerformanceNoteRequest;
@@ -10,6 +11,7 @@ use App\Models\PerformanceNote;
 use App\Models\Personnel;
 use App\Models\User;
 use App\Services\AssessmentService;
+use App\Services\NoteReviewService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Arr;
@@ -22,8 +24,10 @@ use Throwable;
 
 class PerformanceNoteController extends Controller
 {
-    public function __construct(private AssessmentService $assessments)
-    {
+    public function __construct(
+        private AssessmentService $assessments,
+        private NoteReviewService $reviews,
+    ) {
     }
 
     /**
@@ -39,6 +43,7 @@ class PerformanceNoteController extends Controller
         $base = PerformanceNote::query()
             ->when($mineOnly, fn ($q) => $q->where('author_user_id', $user->id))
             ->when(NoteType::tryFrom((string) $request->input('type')), fn ($q, $t) => $q->where('type', $t->value))
+            ->when(NoteStatus::tryFrom((string) $request->input('status')), fn ($q, $s) => $q->where('status', $s->value))
             ->when($request->date('from'), fn ($q, $d) => $q->whereDate('incident_date', '>=', $d))
             ->when($request->date('to'), fn ($q, $d) => $q->whereDate('incident_date', '<=', $d))
             ->when($request->filled('q'), function ($q) use ($request) {
@@ -122,7 +127,7 @@ class PerformanceNoteController extends Controller
         $imagePath = $request->file('image')?->store('note-images', 'local');
 
         try {
-            PerformanceNote::create([
+            $note = PerformanceNote::create([
                 'author_id' => $authorPersonnelId,
                 'author_user_id' => $user->id,
                 'subject_id' => $subject->id,
@@ -145,10 +150,12 @@ class PerformanceNoteController extends Controller
             throw $e;
         }
 
+        $this->reviews->submit($note);
+
         // Penilai kembali ke daftar anggota agar bisa langsung menilai yang lain.
         return $user->hasRole(RoleName::Hrd->value) || ! $user->canAssess()
             ? redirect()->route('notes.index')->with('success', 'Catatan tersimpan.')
-            : redirect()->route('assessor.assessments.index')->with('success', 'Penilaian harian tersimpan.');
+            : redirect()->route('assessor.assessments.index')->with('success', $this->savedMessage($note));
     }
 
 
@@ -210,7 +217,19 @@ class PerformanceNoteController extends Controller
             Storage::disk('local')->delete($oldPath);
         }
 
-        return redirect()->route('notes.index')->with('success', 'Catatan diperbarui.');
+        // Setiap perubahan oleh penilai dikirim ulang ke atasan untuk disetujui.
+        $this->reviews->submit($note);
+
+        return redirect()->route('notes.index')->with('success', $this->reviews->needsReview($note)
+            ? $this->savedMessage($note)
+            : 'Catatan diperbarui.');
+    }
+
+    private function savedMessage(PerformanceNote $note): string
+    {
+        return $note->status === NoteStatus::Pending
+            ? 'Penilaian harian tersimpan dan menunggu persetujuan atasan.'
+            : 'Penilaian harian tersimpan.';
     }
 
     public function destroy(PerformanceNote $note): RedirectResponse

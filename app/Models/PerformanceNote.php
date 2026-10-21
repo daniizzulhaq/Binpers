@@ -3,8 +3,10 @@
 namespace App\Models;
 
 use App\Enums\NoteLevel;
+use App\Enums\NoteStatus;
 use App\Enums\NoteType;
 use App\Models\Concerns\Auditable;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
@@ -17,6 +19,9 @@ class PerformanceNote extends Model
         'type', 'level', 'points', 'title', 'note', 'image_path', 'incident_date',
     ];
 
+    /** Kolom persetujuan (status, review_*) hanya diubah lewat NoteReviewService. */
+    protected $attributes = ['status' => 'approved'];
+
     protected function casts(): array
     {
         return [
@@ -24,6 +29,8 @@ class PerformanceNote extends Model
             'level' => NoteLevel::class,
             'points' => 'integer',
             'incident_date' => 'date',
+            'status' => NoteStatus::class,
+            'reviewed_at' => 'datetime',
         ];
     }
 
@@ -50,6 +57,27 @@ class PerformanceNote extends Model
     public function criterion(): BelongsTo
     {
         return $this->belongsTo(AssessmentCriterion::class, 'assessment_criterion_id');
+    }
+
+    public function reviewerUnit(): BelongsTo
+    {
+        return $this->belongsTo(OrganizationalUnit::class, 'reviewer_unit_id');
+    }
+
+    public function reviewer(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'reviewed_by');
+    }
+
+    /** Hanya catatan yang sudah disetujui yang dihitung poinnya dan terlihat oleh anggota. */
+    public function scopeApproved(Builder $query): Builder
+    {
+        return $query->where($query->qualifyColumn('status'), NoteStatus::Approved->value);
+    }
+
+    public function isStructuralReview(): bool
+    {
+        return $this->review_level === Assessment::REVIEW_STRUCTURAL && $this->reviewer_unit_id !== null;
     }
 
     /** Nama kriteria; catatan tanpa kriteria dihitung sebagai "Umum". */

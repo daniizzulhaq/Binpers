@@ -84,10 +84,24 @@
         </div>
     @endif
 
+    @if ($summary['pending'])
+        <div class="alert alert-warning small">
+            <div class="fw-semibold mb-1"><i class="bi bi-hourglass-split me-1"></i>{{ $summary['pending'] }} penilaian harian menunggu persetujuan atasan</div>
+            Belum dihitung dalam nilai. Rekap baru bisa dikirim setelah semuanya disetujui atau ditolak.
+        </div>
+    @endif
+
+    @if ($summary['rejected'])
+        <div class="alert alert-danger small">
+            <i class="bi bi-x-circle me-1"></i>{{ $summary['rejected'] }} penilaian harian ditolak atasan dan tidak dihitung.
+            Ubah untuk mengirim ulang, atau hapus.
+        </div>
+    @endif
+
     <div class="alert alert-light border small">
         Nilai dihitung otomatis: setiap kriteria mulai dari <strong>{{ $fmt($baseScore) }}</strong>,
-        ditambah poin apresiasi dan dikurangi poin teguran pada bulan ini (0–100),
-        lalu dirata-rata sesuai bobot.
+        ditambah poin apresiasi dan dikurangi poin teguran yang <strong>sudah disetujui atasan</strong>
+        pada bulan ini (0–100), lalu dirata-rata sesuai bobot.
     </div>
 
     {{-- Nilai per kriteria beserta penilaian hariannya --}}

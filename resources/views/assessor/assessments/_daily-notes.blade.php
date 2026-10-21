@@ -10,6 +10,13 @@
                         {{ $n->incident_date->format('d/m/Y') }} · {{ $n->levelLabel() }}
                         · {{ $n->points > 0 ? '+' : '' }}{{ $n->points }} poin
                     </div>
+                    @if ($n->status !== \App\Enums\NoteStatus::Approved)
+                        <span class="badge text-bg-{{ $n->status->color() }}">{{ $n->status->label() }}</span>
+                        <span class="text-muted">· belum dihitung</span>
+                        @if ($n->status === \App\Enums\NoteStatus::Rejected && $n->review_notes)
+                            <div class="text-danger text-break">Alasan: {{ $n->review_notes }}</div>
+                        @endif
+                    @endif
                 </div>
                 @can('update', $n)
                     <a href="{{ route('notes.edit', $n) }}" class="text-decoration-none flex-shrink-0">Ubah</a>

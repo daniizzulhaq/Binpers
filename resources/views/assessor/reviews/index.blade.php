@@ -11,6 +11,19 @@
     </section>
 
     @php
+        $notePending = app(\App\Services\ReviewRoutingService::class)->noteQueueFor(auth()->user())->count();
+    @endphp
+
+    {{-- Pindah antara persetujuan rekap bulanan dan penilaian harian --}}
+    <div class="btn-group w-100 mb-3" role="group">
+        <a href="{{ route('assessor.reviews.index') }}" class="btn btn-primary">Rekap Bulanan</a>
+        <a href="{{ route('note-reviews.index') }}" class="btn btn-outline-primary">
+            Penilaian Harian
+            @if ($notePending) <span class="badge text-bg-danger ms-1">{{ $notePending }}</span> @endif
+        </a>
+    </div>
+
+    @php
         $tabs = [
             'menunggu' => 'Menunggu',
             'diproses' => 'Sudah saya proses',

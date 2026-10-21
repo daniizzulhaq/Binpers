@@ -127,7 +127,7 @@ class AppServiceProvider extends ServiceProvider
 
             $history = $periods->map(fn ($p) => ['period' => $p] + $scores->forPersonnel($p, $me));
 
-            $noteCounts = PerformanceNote::where('subject_id', $me->id)
+            $noteCounts = PerformanceNote::approved()->where('subject_id', $me->id)
                 ->when($current, fn ($q) => $q->whereBetween('incident_date', [
                     $current->start_date->toDateString(),
                     $current->end_date->toDateString(),
@@ -158,6 +158,7 @@ class AppServiceProvider extends ServiceProvider
                     'author.currentAssignment.position',
                     'criterion',
                 ])
+                    ->approved()
                     ->where('subject_id', $me->id)
                     ->latest('incident_date')
                     ->latest('id')

@@ -28,6 +28,14 @@
                 <i class="bi bi-clipboard-check"></i> Pemeriksaan
             </a>
 
+            @can('assessments.approve')
+                @php $notePending = app(\App\Services\ReviewRoutingService::class)->noteQueueFor(auth()->user())->count(); @endphp
+                <a href="{{ route('note-reviews.index') }}" class="sidebar-link {{ $on('note-reviews.*') }}">
+                    <i class="bi bi-check2-square"></i> Persetujuan Harian
+                    @if ($notePending) <span class="badge text-bg-danger ms-auto">{{ $notePending }}</span> @endif
+                </a>
+            @endcan
+
             @can('reports.view')
                 @role('hrd')
                     <a href="{{ route('notes.create') }}" class="sidebar-link {{ $on('notes.create') }}">
@@ -40,7 +48,7 @@
                 </a>
 
                 <a href="{{ route('recap.index') }}" class="sidebar-link {{ $on('recap.*') }}">
-                    <i class="bi bi-calendar-check"></i> Rekap Bulanan
+                    <i class="bi bi-calendar-check"></i> Rekap Nilai
                 </a>
 
                 {{-- HRD tetap perlu: kelola catatan & riwayat pelanggaran. Pimpinan lain lewat Menilai Anggota. --}}

@@ -107,6 +107,12 @@
                                     {{ $sum['count'] }} penilaian bulan ini ·
                                     nilai <strong class="text-body">{{ rtrim(rtrim(number_format($sum['final'], 2, ',', '.'), '0'), ',') }}</strong>
                                 </span>
+                                @if ($sum['pending'])
+                                    <span class="badge text-bg-warning">{{ $sum['pending'] }} menunggu persetujuan</span>
+                                @endif
+                                @if ($sum['rejected'])
+                                    <span class="badge text-bg-danger">{{ $sum['rejected'] }} ditolak</span>
+                                @endif
                             @endif
                         </div>
 

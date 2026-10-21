@@ -29,6 +29,11 @@ class NotificationController extends Controller
 
         $assessmentId = $notification->data['assessment_id'] ?? null;
 
+        // Notifikasi penilaian harian membawa tujuan sendiri.
+        if (! $assessmentId && ! empty($notification->data['url'])) {
+            return redirect($notification->data['url']);
+        }
+
         return redirect($assessmentId ? $this->targetUrl($user, (int) $assessmentId) : route('notifications.index'));
     }
 

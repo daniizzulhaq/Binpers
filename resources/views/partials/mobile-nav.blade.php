@@ -15,7 +15,9 @@
     $pendingReviews = 0;
 
     if ($isStructuralReviewer) {
-        $pendingReviews = app(\App\Services\ReviewRoutingService::class)->queueFor($u)->count();
+        $routing = app(\App\Services\ReviewRoutingService::class);
+        // Rekap bulanan + penilaian harian yang menunggu persetujuan.
+        $pendingReviews = $routing->queueFor($u)->count() + $routing->noteQueueFor($u)->count();
     }
 
     $items = match (true) {
@@ -27,7 +29,7 @@
         $isStructuralReviewer => [
             ['assessor.home', 'home', 'Beranda', ['assessor.home']],
             $penilaian,
-            ['assessor.reviews.index', 'check-circle', 'Persetujuan', ['assessor.reviews.*']],
+            ['assessor.reviews.index', 'check-circle', 'Persetujuan', ['assessor.reviews.*', 'note-reviews.*']],
             $riwayat,
             ['profile.show', 'user', 'Profil', ['profile.*']],
         ],

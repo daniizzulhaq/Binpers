@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Enums\AssessmentStatus;
+use App\Enums\NoteStatus;
 use App\Enums\NoteType;
 use App\Models\Assessment;
 use App\Models\AssessmentCriterion;
@@ -45,7 +46,7 @@ class DailyScoreService
      * @return Collection<int, array{
      *     criteria: array<int, array{score: float, points: int, positive: int, negative: int}>,
      *     general: array{points: int, positive: int, negative: int},
-     *     count: int, final: float, grade: string
+     *     count: int, pending: int, rejected: int, final: float, grade: string
      * }>
      */
     public function summarize(AssessmentPeriod $period, int $assessorId, Collection $assesseeIds): Collection
@@ -59,10 +60,19 @@ class DailyScoreService
 
         $rows = $this->notesQuery($period, $assessorId, $assesseeIds->all())
             ->toBase()
+            // Hanya penilaian harian yang sudah disetujui atasan yang dihitung.
             ->selectRaw('subject_id, assessment_criterion_id,
-                SUM(points) as points,
-                SUM(CASE WHEN type = ? THEN 1 ELSE 0 END) as positive,
-                SUM(CASE WHEN type = ? THEN 1 ELSE 0 END) as negative', [NoteType::Positive->value, NoteType::Negative->value])
+                SUM(CASE WHEN status = ? THEN points ELSE 0 END) as points,
+                SUM(CASE WHEN status = ? AND type = ? THEN 1 ELSE 0 END) as positive,
+                SUM(CASE WHEN status = ? AND type = ? THEN 1 ELSE 0 END) as negative,
+                SUM(CASE WHEN status = ? THEN 1 ELSE 0 END) as pending,
+                SUM(CASE WHEN status = ? THEN 1 ELSE 0 END) as rejected', [
+                NoteStatus::Approved->value,
+                NoteStatus::Approved->value, NoteType::Positive->value,
+                NoteStatus::Approved->value, NoteType::Negative->value,
+                NoteStatus::Pending->value,
+                NoteStatus::Rejected->value,
+            ])
             ->groupBy('subject_id', 'assessment_criterion_id')
             ->get()
             ->groupBy('subject_id');
@@ -70,6 +80,8 @@ class DailyScoreService
         return $assesseeIds->mapWithKeys(function ($id) use ($rows, $criteria, $criterionIds) {
             $general = ['points' => 0, 'positive' => 0, 'negative' => 0];
             $perCriterion = [];
+            $pending = (int) $rows->get($id, collect())->sum('pending');
+            $rejected = (int) $rows->get($id, collect())->sum('rejected');
 
             foreach ($rows->get($id, collect()) as $r) {
                 $bucket = ['points' => (int) $r->points, 'positive' => (int) $r->positive, 'negative' => (int) $r->negative];
@@ -97,6 +109,8 @@ class DailyScoreService
                 'criteria' => $result,
                 'general' => $general,
                 'count' => $count,
+                'pending' => $pending,
+                'rejected' => $rejected,
                 'final' => $final,
                 'grade' => $this->calculator->gradeFor($final),
             ]];

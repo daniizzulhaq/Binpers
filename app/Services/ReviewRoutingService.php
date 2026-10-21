@@ -3,10 +3,13 @@
 namespace App\Services;
 
 use App\Enums\AssessmentStatus;
+use App\Enums\NoteStatus;
 use App\Enums\RoleName;
 use App\Enums\UnitType;
 use App\Models\Assessment;
 use App\Models\OrganizationalUnit;
+use App\Models\PerformanceNote;
+use App\Models\Personnel;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
@@ -33,9 +36,19 @@ class ReviewRoutingService
      */
     public function resolve(Assessment $assessment): array
     {
+        return $this->resolveForAssessor($assessment->assessor()->with(['user', 'currentAssignment.unit'])->first());
+    }
+
+    /**
+     * Tujuan persetujuan berdasarkan penempatan aktif penilai (dipakai rekap dan penilaian harian).
+     *
+     * @return array{review_level: string, reviewer_unit_id: ?int}
+     */
+    public function resolveForAssessor(?Personnel $assessor): array
+    {
         $leadership = ['review_level' => Assessment::REVIEW_LEADERSHIP, 'reviewer_unit_id' => null];
 
-        $assessor = $assessment->assessor()->with(['user', 'currentAssignment.unit'])->first();
+        $assessor?->loadMissing(['user', 'currentAssignment.unit']);
         $user = $assessor?->user;
 
         // Kapolres pimpinan tertinggi di sistem: penilaiannya langsung final.
@@ -71,43 +84,38 @@ class ReviewRoutingService
     {
         $assessment->loadMissing(['assessor.user', 'assessee.user', 'reviewerUnit']);
 
-        $users = match (true) {
-            $assessment->review_level === Assessment::REVIEW_SELF => collect(),
-            $assessment->isStructuralReview() && $assessment->reviewerUnit !== null => $this->headsOf(
-                $assessment->reviewer_unit_id,
-                $this->approverRolesFor($assessment->reviewerUnit->type)
-            ),
-            $assessment->review_level === Assessment::REVIEW_KAPOLRES => User::role(RoleName::Kapolres->value)
-                ->where('is_active', true)->get(),
-            default => User::permission('assessments.approve')->where('is_active', true)->get(),
-        };
-
         // Penilai dan anggota yang dinilai tidak pernah menjadi penyetuju.
-        $excluded = [$assessment->assessor?->user_id, $assessment->assessee?->user_id];
+        return $this->approversOf($assessment, [$assessment->assessor?->user_id, $assessment->assessee?->user_id]);
+    }
 
-        return $users->reject(fn (User $u) => in_array($u->id, $excluded, true))->values();
+    /** Pengguna yang berhak menyetujui penilaian harian ini (untuk notifikasi). */
+    public function noteApproversFor(PerformanceNote $note): Collection
+    {
+        $note->loadMissing(['subject', 'reviewerUnit']);
+
+        return $this->approversOf($note, [$note->author_user_id, $note->subject?->user_id]);
     }
 
     /**
-     * Apakah pengguna ini penanggung jawab persetujuan penilaian tersebut.
-     * Status dan larangan memeriksa milik sendiri / diri sendiri diperiksa di AssessmentPolicy.
+     * Apakah pengguna ini penanggung jawab persetujuan rekap / penilaian harian tersebut.
+     * Status dan larangan memeriksa milik sendiri / diri sendiri diperiksa di policy.
      */
-    public function canReview(User $user, Assessment $assessment): bool
+    public function canReview(User $user, Assessment|PerformanceNote $item): bool
     {
-        if (! $user->is_active || $assessment->review_level === Assessment::REVIEW_SELF) {
+        if (! $user->is_active || $item->review_level === Assessment::REVIEW_SELF) {
             return false;
         }
 
-        if ($assessment->review_level === Assessment::REVIEW_KAPOLRES) {
+        if ($item->review_level === Assessment::REVIEW_KAPOLRES) {
             return $user->hasRole(RoleName::Kapolres->value);
         }
 
-        if (! $assessment->isStructuralReview()) {
+        if (! $item->isStructuralReview()) {
             return $user->can('assessments.approve');
         }
 
         return $user->can('assessments.review-structural')
-            && in_array($assessment->reviewer_unit_id, $this->headedUnitIds($user), true);
+            && in_array($item->reviewer_unit_id, $this->headedUnitIds($user), true);
     }
 
     /**
@@ -118,6 +126,20 @@ class ReviewRoutingService
     {
         $query = Assessment::query()->whereIn('status', [AssessmentStatus::Submitted->value, AssessmentStatus::Approved->value]);
 
+        return $this->scopeReviewable($query, $user, 'assessor_id', 'assessee_id');
+    }
+
+    /** Penilaian harian yang menunggu persetujuan pengguna ini. */
+    public function noteQueueFor(User $user): Builder
+    {
+        $query = PerformanceNote::query()->where('status', NoteStatus::Pending->value);
+
+        return $this->scopeReviewable($query, $user, 'author_id', 'subject_id');
+    }
+
+    /** Batasi ke item yang tujuan persetujuannya pengguna ini (bukan milik sendiri / tentang dirinya). */
+    private function scopeReviewable(Builder $query, User $user, string $authorColumn, string $subjectColumn): Builder
+    {
         if (! $user->is_active) {
             return $query->whereRaw('1 = 0');
         }
@@ -127,8 +149,8 @@ class ReviewRoutingService
         $kapolres = $user->hasRole(RoleName::Kapolres->value);
 
         if ($user->personnel) {
-            $query->where('assessor_id', '!=', $user->personnel->id)
-                ->where('assessee_id', '!=', $user->personnel->id);
+            $query->where(fn (Builder $q) => $q->whereNull($authorColumn)->orWhere($authorColumn, '!=', $user->personnel->id))
+                ->where($subjectColumn, '!=', $user->personnel->id);
         }
 
         return $query->where(function (Builder $w) use ($unitIds, $leader, $kapolres) {
@@ -165,7 +187,7 @@ class ReviewRoutingService
     }
 
     /** Label tujuan persetujuan untuk ditampilkan. */
-    public function targetLabel(Assessment $assessment): string
+    public function targetLabel(Assessment|PerformanceNote $assessment): string
     {
         return match (true) {
             $assessment->isStructuralReview() => $assessment->reviewerUnit?->name ?? 'Atasan struktural',
@@ -176,6 +198,23 @@ class ReviewRoutingService
     }
 
     // ---------------------------------------------------------------
+
+    /** Calon penyetuju menurut tujuan persetujuan, tanpa pengguna yang dikecualikan. */
+    private function approversOf(Assessment|PerformanceNote $item, array $excluded): Collection
+    {
+        $users = match (true) {
+            $item->review_level === Assessment::REVIEW_SELF => collect(),
+            $item->isStructuralReview() && $item->reviewerUnit !== null => $this->headsOf(
+                $item->reviewer_unit_id,
+                $this->approverRolesFor($item->reviewerUnit->type)
+            ),
+            $item->review_level === Assessment::REVIEW_KAPOLRES => User::role(RoleName::Kapolres->value)
+                ->where('is_active', true)->get(),
+            default => User::permission('assessments.approve')->where('is_active', true)->get(),
+        };
+
+        return $users->reject(fn (User $u) => in_array($u->id, $excluded, true))->values();
+    }
 
     /** Unit induk terdekat bertipe bagian/satuan/seksi/polsek, dimulai dari unit itu sendiri. */
     private function structuralParent(?OrganizationalUnit $unit): ?OrganizationalUnit

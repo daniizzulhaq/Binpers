@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Enums\ApprovalAction;
 use App\Enums\AssessmentStatus;
+use App\Enums\NoteStatus;
 use App\Models\Assessment;
 use App\Models\AssessmentApproval;
 use App\Models\AssessmentDetail;
@@ -175,6 +176,14 @@ class AssessmentService
 
             if (! $a->period->isOpen()) {
                 throw ValidationException::withMessages(['period' => 'Periode penilaian sudah tidak dibuka.']);
+            }
+
+            // Rekap hanya bisa dikirim setelah semua penilaian hariannya diproses atasan.
+            $pending = $this->daily->notesQuery($a->period, $a->assessor_id, $a->assessee_id)
+                ->where('status', NoteStatus::Pending->value)->count();
+
+            if ($pending > 0) {
+                throw ValidationException::withMessages(['notes' => "Masih ada {$pending} penilaian harian yang menunggu persetujuan atasan. Rekap dapat dikirim setelah semuanya disetujui atau ditolak."]);
             }
 
             $this->syncFromNotes($a);

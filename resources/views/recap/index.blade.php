@@ -1,7 +1,7 @@
 @extends('layouts.app')
 
-@section('title', 'Rekap Nilai Bulanan')
-@section('page-title', 'Rekap Nilai Bulanan')
+@section('title', 'Rekap Nilai')
+@section('page-title', 'Rekap Nilai')
 
 @section('content')
     @php
@@ -13,11 +13,25 @@
         };
     @endphp
 
-    @if (! $period)
+    <ul class="nav nav-pills mb-3">
+        @foreach ($types as $key => [$typeLabel])
+            <li class="nav-item">
+                <a class="nav-link {{ $type === $key ? 'active' : '' }}"
+                   href="{{ route('recap.index', array_filter(['type' => $key, 'unit_id' => request('unit_id'), 'q' => request('q'), 'sort' => request('sort')])) }}">
+                    {{ $typeLabel }}
+                </a>
+            </li>
+        @endforeach
+    </ul>
+
+    @if ($periods->isEmpty())
         <div class="alert alert-info">Belum ada periode penilaian.</div>
+    @elseif ($type !== 'bulanan')
+        @include('recap._range')
     @else
         <form method="GET" class="row g-2 mb-3">
-            <div class="col-md-3">
+            <input type="hidden" name="type" value="bulanan">
+            <div class="col-md-2">
                 <select name="period_id" class="form-select" aria-label="Periode">
                     @foreach ($periods as $p)
                         <option value="{{ $p->id }}" @selected($p->id === $period->id)>{{ $p->name }}</option>
@@ -32,8 +46,11 @@
                     @endforeach
                 </select>
             </div>
-            <div class="col-md-4">
+            <div class="col-md-3">
                 <input type="search" name="q" value="{{ request('q') }}" class="form-control" placeholder="Cari nama atau NRP">
+            </div>
+            <div class="col-md-2">
+                @include('recap._sort')
             </div>
             <div class="col-md-2">
                 <button class="btn btn-primary w-100">Tampilkan</button>
@@ -78,18 +95,20 @@
                             <th class="text-end">Penilaian</th>
                             <th class="text-end">Apresiasi</th>
                             <th class="text-end">Teguran</th>
-                            <th class="text-end">Total</th>
+                            @include('recap._score-th', ['label' => 'Total'])
                             <th>Predikat</th>
+                            <th></th>
                         </tr>
                     </thead>
                     <tbody>
                         @forelse ($people as $p)
                             @php
                                 $r = $rows->get($p->id);
+                                $detail = route('recap.show', ['personnel' => $p, 'type' => 'bulanan', 'period_id' => $period->id]);
                             @endphp
                             <tr>
                                 <td>
-                                    <div class="fw-semibold">{{ $p->user->name }}</div>
+                                    <a href="{{ $detail }}" class="fw-semibold text-decoration-none">{{ $p->user->name }}</a>
                                     <div class="small text-muted">{{ $p->nrp }}</div>
                                 </td>
                                 <td class="small">{{ $p->currentAssignment?->unit?->name ?? '-' }}</td>
@@ -113,9 +132,12 @@
                                         <span class="badge text-bg-secondary">Belum dinilai</span>
                                     @endif
                                 </td>
+                                <td class="text-end">
+                                    <a href="{{ $detail }}" class="btn btn-sm btn-outline-primary">Detail</a>
+                                </td>
                             </tr>
                         @empty
-                            <tr><td colspan="7" class="text-center text-muted py-4">Tidak ada personel.</td></tr>
+                            <tr><td colspan="8" class="text-center text-muted py-4">Tidak ada personel.</td></tr>
                         @endforelse
                     </tbody>
                 </table>

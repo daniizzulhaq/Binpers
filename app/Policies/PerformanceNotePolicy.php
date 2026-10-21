@@ -2,11 +2,13 @@
 
 namespace App\Policies;
 
+use App\Enums\NoteStatus;
 use App\Enums\RoleName;
 use App\Models\AssessmentPeriod;
 use App\Models\PerformanceNote;
 use App\Models\User;
 use App\Services\DailyScoreService;
+use App\Services\ReviewRoutingService;
 
 class PerformanceNotePolicy
 {
@@ -21,8 +23,15 @@ class PerformanceNotePolicy
             return true;
         }
 
+        // Atasan penanggung jawab persetujuan (mis. melihat foto sebelum menyetujui).
+        if ($note->review_level !== null && app(ReviewRoutingService::class)->canReview($user, $note)) {
+            return true;
+        }
+
+        // Anggota hanya melihat catatan yang sudah disetujui atasan penilainya.
         return $user->personnel?->id !== null
-            && (int) $user->personnel->id === (int) $note->subject_id;
+            && (int) $user->personnel->id === (int) $note->subject_id
+            && $note->status === NoteStatus::Approved;
     }
 
     public function update(User $user, PerformanceNote $note): bool
@@ -37,6 +46,15 @@ class PerformanceNotePolicy
             && $this->recapOpen($note);
     }
 
+    /** Atasan penanggung jawab menyetujui/menolak penilaian harian yang menunggu. */
+    public function review(User $user, PerformanceNote $note): bool
+    {
+        return $note->status === NoteStatus::Pending
+            && (int) $note->author_user_id !== (int) $user->id
+            && (int) $note->subject_id !== (int) $user->personnel?->id
+            && app(ReviewRoutingService::class)->canReview($user, $note);
+    }
+
     /** Hanya akun pembuat. HRD untuk semua jenis; penilai hanya jenis yang bukan khusus HRD. */
     private function owns(User $user, PerformanceNote $note): bool
     {
@@ -48,9 +66,13 @@ class PerformanceNotePolicy
             || (! $note->type->hrdOnly() && $user->can('assessments.create'));
     }
 
-    /** Batas jam ubah/hapus (default 24 jam). */
+    /** Batas jam ubah/hapus (default 24 jam); yang ditolak atasan selalu boleh diperbaiki. */
     private function withinWindow(PerformanceNote $note): bool
     {
+        if ($note->status === NoteStatus::Rejected) {
+            return true;
+        }
+
         $hours = (int) config('assessment.note_edit_hours', 24);
 
         return $note->created_at->gt(now()->subHours($hours));
