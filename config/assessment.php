@@ -14,6 +14,10 @@ return [
         ['min' => 0, 'label' => 'Kurang'],
     ],
 
+    // Penilaian harian: nilai awal setiap kriteria (skala 0–100) sebelum ditambah
+    // poin apresiasi dan dikurangi poin teguran pada bulan tersebut.
+    'base_score' => 75,
+
     // Pilihan skor sekali ketuk pada form penilaian.
     // Dapat diubah sesuai kebijakan.
     'score_options' => [

@@ -26,7 +26,7 @@ class MyNoteController extends Controller
             ->pluck('total', 'type');
 
         $notes = $base
-            ->with(['authorUser', 'author.currentAssignment.position'])
+            ->with(['authorUser', 'author.currentAssignment.position', 'criterion'])
             ->latest('incident_date')->latest('id')
             ->paginate(10)->withQueryString();
 

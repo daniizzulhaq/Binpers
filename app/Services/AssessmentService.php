@@ -25,6 +25,8 @@ class AssessmentService
         private ScoreCalculator $calculator,
         private PointService $points,
         private AssessorScopeService $scope,
+        private ReviewRoutingService $routing,
+        private DailyScoreService $daily,
     ) {
     }
 
@@ -164,7 +166,7 @@ class AssessmentService
         return $assessment;
     }
 
-    /** Kirim penilaian untuk diperiksa. Semua kriteria wajib terisi. */
+    /** Kirim rekap untuk diperiksa. Skor tiap kriteria dihitung otomatis dari penilaian harian. */
     public function submit(Assessment $assessment, User $actor): Assessment
     {
         $a = DB::transaction(function () use ($assessment, $actor) {
@@ -175,16 +177,37 @@ class AssessmentService
                 throw ValidationException::withMessages(['period' => 'Periode penilaian sudah tidak dibuka.']);
             }
 
+            $this->syncFromNotes($a);
             [$score, $grade] = $this->recalculate($a);
 
-            return $this->transition($a, $actor, ApprovalAction::Submit, AssessmentStatus::Submitted, null, [
+            // Tujuan persetujuan disimpan sekarang (dan dihitung ulang tiap kirim ulang),
+            // agar tidak berubah bila penilai atau atasannya dimutasi.
+            $route = $this->routing->resolve($a);
+
+            $a = $this->transition($a, $actor, ApprovalAction::Submit, AssessmentStatus::Submitted, null, [
                 'final_score' => $score,
                 'grade' => $grade,
                 'submitted_at' => now(),
+                'review_level' => $route['review_level'],
+                'reviewer_unit_id' => $route['reviewer_unit_id'],
             ]);
+
+            // Penilaian Kapolres: tidak ada atasan di sistem, langsung disetujui dan final.
+            if ($route['review_level'] === Assessment::REVIEW_SELF) {
+                $a = $this->transition($a, $actor, ApprovalAction::Approve, AssessmentStatus::Approved, null, [
+                    'approved_at' => now(),
+                ]);
+                $a = $this->lockFinal($a, $actor, null);
+            }
+
+            return $a;
         });
 
-        $this->notify(ApprovalAction::Submit, $a, $actor);
+        $this->notify(
+            $a->status === AssessmentStatus::Finalized ? ApprovalAction::Finalize : ApprovalAction::Submit,
+            $a,
+            $actor
+        );
 
         return $a;
     }
@@ -196,6 +219,7 @@ class AssessmentService
             $a = $this->lock($assessment);
             $this->ensureStatus($a, [AssessmentStatus::Submitted, AssessmentStatus::Approved]);
             $this->ensureNotOwn($a, $actor);
+            $this->ensureNotAssessee($a, $actor);
 
             return $this->transition($a, $actor, ApprovalAction::Return, AssessmentStatus::Revision, $notes, [
                 'revision_count' => $a->revision_count + 1,
@@ -208,42 +232,40 @@ class AssessmentService
         return $a;
     }
 
+    /**
+     * Setujui sekaligus finalisasi: penyetuju (atasan struktural atau pimpinan) langsung mengunci nilai.
+     * Riwayat tetap mencatat dua langkah: Disetujui lalu Difinalisasi.
+     */
     public function approve(Assessment $assessment, User $actor, ?string $notes = null): Assessment
     {
         $a = DB::transaction(function () use ($assessment, $actor, $notes) {
             $a = $this->lock($assessment);
             $this->ensureStatus($a, [AssessmentStatus::Submitted]);
             $this->ensureNotOwn($a, $actor);
+            $this->ensureNotAssessee($a, $actor);
 
-            return $this->transition($a, $actor, ApprovalAction::Approve, AssessmentStatus::Approved, $notes, [
+            $a = $this->transition($a, $actor, ApprovalAction::Approve, AssessmentStatus::Approved, $notes, [
                 'approved_at' => now(),
             ]);
+
+            return $this->lockFinal($a, $actor, null);
         });
 
-        $this->notify(ApprovalAction::Approve, $a, $actor);
+        $this->notify(ApprovalAction::Finalize, $a, $actor);
 
         return $a;
     }
 
-    /** Finalisasi: nilai dihitung ulang dari detail, dikunci, lalu poin diberikan. */
+    /** Finalisasi penilaian lama yang sudah berstatus Disetujui (sebelum alur setujui = final). */
     public function finalize(Assessment $assessment, User $actor, ?string $notes = null): Assessment
     {
         $a = DB::transaction(function () use ($assessment, $actor, $notes) {
             $a = $this->lock($assessment);
             $this->ensureStatus($a, [AssessmentStatus::Approved]);
+            $this->ensureNotOwn($a, $actor);
+            $this->ensureNotAssessee($a, $actor);
 
-            [$score, $grade] = $this->recalculate($a);
-
-            $a = $this->transition($a, $actor, ApprovalAction::Finalize, AssessmentStatus::Finalized, $notes, [
-                'final_score' => $score,
-                'grade' => $grade,
-                'finalized_at' => now(),
-                'finalized_by' => $actor->id,
-            ]);
-
-
-
-            return $a;
+            return $this->lockFinal($a, $actor, $notes);
         });
 
         $this->notify(ApprovalAction::Finalize, $a, $actor);
@@ -277,6 +299,39 @@ class AssessmentService
         }
     }
 
+    /** Anggota yang dinilai tidak boleh menyetujui/mengembalikan penilaian atas dirinya. */
+    private function ensureNotAssessee(Assessment $a, User $actor): void
+    {
+        if ($actor->personnel?->id === $a->assessee_id) {
+            throw ValidationException::withMessages([
+                'status' => 'Anda tidak dapat memeriksa penilaian atas diri Anda sendiri.',
+            ]);
+        }
+    }
+
+    /**
+     * Isi skor tiap kriteria dari penilaian harian penilai atas anggota ini pada periode tersebut.
+     * Dipanggil di dalam transaksi; setelah dikirim, penilaian harian terkait dikunci.
+     */
+    private function syncFromNotes(Assessment $a): void
+    {
+        $criteria = $a->period->criteria;
+        $summary = $this->daily->summarize($a->period, $a->assessor_id, collect([$a->assessee_id]))->get($a->assessee_id);
+
+        AssessmentDetail::where('assessment_id', $a->id)
+            ->whereNotIn('assessment_criterion_id', $criteria->pluck('id'))
+            ->delete();
+
+        foreach ($criteria as $c) {
+            $bucket = $summary['criteria'][$c->id];
+
+            AssessmentDetail::updateOrCreate(
+                ['assessment_id' => $a->id, 'assessment_criterion_id' => $c->id],
+                ['score' => $this->daily->toCriterionScale($c, $bucket['score']), 'note' => $this->daily->describe($bucket)]
+            );
+        }
+    }
+
     /** @return array{0: float, 1: string} */
     private function recalculate(Assessment $a): array
     {
@@ -290,9 +345,26 @@ class AssessmentService
             ]);
         }
 
-        $score = $this->calculator->calculate($criteria, $scores);
+        // Poin penilaian harian "Umum" (tanpa kriteria) langsung menambah/mengurangi nilai akhir.
+        $general = $this->daily->summarize($a->period, $a->assessor_id, collect([$a->assessee_id]))
+            ->get($a->assessee_id)['general']['points'];
+
+        $score = $this->daily->clamp($this->calculator->calculate($criteria, $scores) + $general);
 
         return [$score, $this->calculator->gradeFor($score)];
+    }
+
+    /** Hitung ulang nilai dari detail lalu kunci sebagai Final. Dipanggil di dalam transaksi. */
+    private function lockFinal(Assessment $a, User $actor, ?string $notes): Assessment
+    {
+        [$score, $grade] = $this->recalculate($a);
+
+        return $this->transition($a, $actor, ApprovalAction::Finalize, AssessmentStatus::Finalized, $notes, [
+            'final_score' => $score,
+            'grade' => $grade,
+            'finalized_at' => now(),
+            'finalized_by' => $actor->id,
+        ]);
     }
 
     private function transition(
@@ -326,10 +398,9 @@ class AssessmentService
             $a->loadMissing(['period', 'assessor.user', 'assessee.user']);
 
             $recipients = match ($action) {
-                ApprovalAction::Submit => User::permission('assessments.approve')->where('is_active', true)->get(),
+                ApprovalAction::Submit => $this->routing->approversFor($a),
                 ApprovalAction::Return => collect([$a->assessor->user]),
-                ApprovalAction::Approve => User::permission('assessments.finalize')->where('is_active', true)->get()
-                    ->push($a->assessor->user),
+                ApprovalAction::Approve => collect([$a->assessor->user]),
                 ApprovalAction::Finalize => collect([$a->assessee->user, $a->assessor->user]),
             };
 

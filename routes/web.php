@@ -21,6 +21,7 @@ use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\MyNoteController;
 use App\Http\Controllers\ReportController;
 use App\Http\Controllers\ReviewController;
+use App\Http\Controllers\StructuralReviewController;
 use App\Http\Controllers\Hrd\NotePointSettingController;
 use App\Http\Controllers\MonthlyRecapController;
 use App\Http\Controllers\NoteImageController;
@@ -146,15 +147,19 @@ Route::middleware('permission:periods.manage')->group(function () {
         ->middleware('permission:reports.view')->name('recap.index');
     Route::post('rekap-bulanan/{period}/kunci', [MonthlyRecapController::class, 'lock'])
         ->middleware('permission:periods.manage')->name('recap.lock');
-    Route::middleware('permission:assessments.approve')
-        ->prefix('pemeriksaan')->name('review.')
+    // HRD hanya melihat; Kapolres/Wakapolres menyetujui (setujui = langsung final).
+    Route::prefix('pemeriksaan')->name('review.')
         ->group(function () {
-            Route::get('/', [ReviewController::class, 'index'])->name('index');
-            Route::get('{assessment}', [ReviewController::class, 'show'])->whereNumber('assessment')->name('show');
-            Route::post('{assessment}/setujui', [ReviewController::class, 'approve'])->name('approve');
-            Route::post('{assessment}/kembalikan', [ReviewController::class, 'returnForRevision'])->name('return');
-            Route::post('{assessment}/finalisasi', [ReviewController::class, 'finalize'])
-                ->middleware('permission:assessments.finalize')->name('finalize');
+            Route::middleware('permission:assessments.approve|reports.view')->group(function () {
+                Route::get('/', [ReviewController::class, 'index'])->name('index');
+                Route::get('{assessment}', [ReviewController::class, 'show'])->whereNumber('assessment')->name('show');
+            });
+
+            Route::middleware('permission:assessments.approve')->group(function () {
+                Route::post('{assessment}/setujui', [ReviewController::class, 'approve'])->name('approve');
+                Route::post('{assessment}/kembalikan', [ReviewController::class, 'returnForRevision'])->name('return');
+                Route::post('{assessment}/finalisasi', [ReviewController::class, 'finalize'])->name('finalize');
+            });
         });
 
     // ---------------- Penilai: Kapolres, Wakapolres, Kabag, Kasat, Kasi, Kanit ----------------
@@ -174,6 +179,17 @@ Route::middleware('permission:periods.manage')->group(function () {
             // Hasil penilaian pribadi (penilai juga dinilai atasannya)
             Route::get('hasil-saya', [MemberAssessmentController::class, 'index'])->name('results.index');
             Route::get('hasil-saya/{assessment}', [MemberAssessmentController::class, 'show'])->whereNumber('assessment')->name('results.show');
+
+            // Persetujuan oleh atasan struktural (Kabag, Kasat, Kasi, Kasi Pengawas, Kapolsek)
+            Route::middleware('permission:assessments.review-structural')
+                ->prefix('persetujuan')->name('reviews.')
+                ->group(function () {
+                    Route::get('/', [StructuralReviewController::class, 'index'])->name('index');
+                    Route::get('{assessment}', [StructuralReviewController::class, 'show'])->whereNumber('assessment')->name('show');
+                    Route::post('{assessment}/setujui', [StructuralReviewController::class, 'approve'])->whereNumber('assessment')->name('approve');
+                    Route::post('{assessment}/kembalikan', [StructuralReviewController::class, 'returnForRevision'])->whereNumber('assessment')->name('return');
+                    Route::post('{assessment}/finalisasi', [StructuralReviewController::class, 'finalize'])->whereNumber('assessment')->name('finalize');
+                });
         });
 
     // ---------------- Anggota ----------------

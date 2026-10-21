@@ -28,10 +28,10 @@
             <div class="card border-0 shadow-sm h-100">
                 <div class="card-body p-3">
                     <div class="small text-muted d-flex align-items-center gap-1">
-                        <x-icon name="alert" :size="16" style="color:#d97706;" />
+                        <x-icon name="alert" :size="16" style="color:var(--bs-danger);" />
                         Teguran
                     </div>
-                    <div class="fs-3 fw-bold lh-1 mt-1" style="color:#b45309;">
+                    <div class="fs-3 fw-bold lh-1 mt-1" style="color:var(--bs-danger);">
                         {{ $negative }}
                     </div>
                 </div>
@@ -42,10 +42,10 @@
             <div class="card border-0 shadow-sm h-100">
                 <div class="card-body p-3">
                     <div class="small text-muted d-flex align-items-center gap-1">
-                        <x-icon name="file-alert" :size="16" class="text-danger" />
+                        <x-icon name="file-alert" :size="16" class="text-dark" />
                         Pelanggaran
                     </div>
-                    <div class="fs-3 fw-bold text-danger lh-1 mt-1">{{ $violation }}</div>
+                    <div class="fs-3 fw-bold text-dark lh-1 mt-1">{{ $violation }}</div>
                 </div>
             </div>
         </div>

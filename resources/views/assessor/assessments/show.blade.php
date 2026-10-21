@@ -76,6 +76,8 @@
         </div>
     </div>
 
+    @include('assessor.assessments._recap-notes', ['assessment' => $a])
+
     @if ($a->general_notes || $a->member_notes)
         <div class="card border-0 shadow-sm mb-3">
             <div class="card-body small">
@@ -114,15 +116,15 @@
     <div class="d-flex flex-wrap gap-2">
         @can('update', $a)
             <a href="{{ route('assessor.assessments.form', [$a->assessment_period_id, $a->assessee_id]) }}" class="btn btn-outline-primary">
-                <i class="bi bi-pencil-square me-1"></i>Ubah Penilaian
+                <i class="bi bi-pencil-square me-1"></i>Buka Rekap
             </a>
         @endcan
         @can('submit', $a)
             <form method="POST" action="{{ route('assessor.assessments.submit', $a) }}">
                 @csrf
                 <button class="btn btn-primary"
-                        onclick="return confirm('Kirim penilaian untuk diperiksa?')">
-                    <i class="bi bi-send me-1"></i>Kirim Penilaian
+                        onclick="return confirm(@js(auth()->user()->hasRole('kapolres') ? 'Kirim rekap ini? Rekap Kapolres langsung final dan tidak dapat direvisi.' : 'Kirim rekap untuk disetujui?'))">
+                    <i class="bi bi-send me-1"></i>Kirim Rekap
                 </button>
             </form>
         @endcan

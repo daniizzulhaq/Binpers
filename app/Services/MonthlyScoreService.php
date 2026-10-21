@@ -72,9 +72,16 @@ class MonthlyScoreService
             ->groupBy('assessee_id')
             ->get()->keyBy('assessee_id');
 
-        // Poin catatan berdasarkan tanggal kejadian di dalam periode.
+        // Poin catatan berdasarkan tanggal kejadian di dalam periode. Penilaian harian yang
+        // sudah masuk ke rekap final penilainya tidak dihitung lagi (sudah ada di nilai dasar).
         $notes = PerformanceNote::whereIn('subject_id', $personnelIds)
             ->whereBetween('incident_date', [$period->start_date->toDateString(), $period->end_date->toDateString()])
+            ->whereNotExists(fn ($q) => $q->selectRaw('1')
+                ->from('assessments')
+                ->where('assessments.assessment_period_id', $period->id)
+                ->where('assessments.status', AssessmentStatus::Finalized->value)
+                ->whereColumn('assessments.assessor_id', 'performance_notes.author_id')
+                ->whereColumn('assessments.assessee_id', 'performance_notes.subject_id'))
             ->toBase()
             ->selectRaw('subject_id,
                 SUM(CASE WHEN points > 0 THEN points ELSE 0 END) as bonus,

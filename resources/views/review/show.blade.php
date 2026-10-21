@@ -6,6 +6,10 @@
 @section('content')
     <div class="mb-3"><a href="{{ route('review.index') }}" class="small"><i class="bi bi-arrow-left"></i> Kembali ke daftar</a></div>
 
+    @unless (auth()->user()->can('assessments.approve'))
+        <div class="alert alert-secondary small"><i class="bi bi-eye me-1"></i>Mode pemantauan: Anda hanya dapat melihat penilaian ini.</div>
+    @endunless
+
     <div class="row g-3">
         <div class="col-lg-8">
             <div class="card border-0 shadow-sm mb-3">
@@ -29,6 +33,7 @@
                         <div class="col-md-4"><span class="text-muted">Periode:</span> {{ $assessment->period->name }}</div>
                         <div class="col-md-4"><span class="text-muted">Penilai:</span> {{ $assessment->assessor->user->name }}</div>
                         <div class="col-md-4"><span class="text-muted">Revisi:</span> {{ $assessment->revision_count }}×</div>
+                        <div class="col-12 mt-1"><span class="text-muted">Tujuan persetujuan:</span> {{ $routing->targetLabel($assessment) }}</div>
                     </div>
                 </div>
             </div>
@@ -57,6 +62,8 @@
                 </div>
             </div>
 
+            @include('assessor.assessments._recap-notes', ['assessment' => $assessment])
+
             <div class="card border-0 shadow-sm">
                 <div class="card-header bg-white fw-semibold">Catatan</div>
                 <div class="card-body small">
@@ -67,21 +74,30 @@
         </div>
 
         <div class="col-lg-4">
+            @if ($assessment->isStructuralReview() && $assessment->status === \App\Enums\AssessmentStatus::Submitted)
+                <div class="alert alert-warning small">
+                    <div class="fw-semibold"><i class="bi bi-hourglass-split me-1"></i>Menunggu persetujuan {{ $routing->targetLabel($assessment) }}</div>
+                    Penilaian ini disetujui oleh atasan struktural penilai. Halaman ini hanya untuk pemantauan.
+                </div>
+            @endif
+
             @canany(['approve', 'returnForRevision', 'finalize'], $assessment)
                 <div class="card border-0 shadow-sm mb-3">
                     <div class="card-header bg-white fw-semibold">Tindakan</div>
                     <div class="card-body">
                         @can('approve', $assessment)
-                            <form method="POST" action="{{ route('review.approve', $assessment) }}" class="mb-3">
+                            <form method="POST" action="{{ route('review.approve', $assessment) }}" class="mb-3"
+                                  onsubmit="return confirm('Setujui penilaian ini? Nilai akan langsung final dan dikunci.')">
                                 @csrf
                                 <textarea name="notes" class="form-control mb-2" rows="2" placeholder="Catatan persetujuan (opsional)"></textarea>
-                                <button class="btn btn-success w-100"><i class="bi bi-check2-circle me-1"></i>Setujui</button>
+                                <button class="btn btn-success w-100"><i class="bi bi-check2-circle me-1"></i>Setujui &amp; Finalisasi</button>
+                                <div class="form-text">Penilaian langsung final setelah disetujui.</div>
                             </form>
                         @endcan
 
                         @can('finalize', $assessment)
                             <form method="POST" action="{{ route('review.finalize', $assessment) }}" class="mb-3"
-                                  onsubmit="return confirm('Finalisasi akan mengunci nilai dan memberikan poin. Lanjutkan?')">
+                                  onsubmit="return confirm('Penilaian lama ini sudah disetujui. Finalisasi akan mengunci nilai. Lanjutkan?')">
                                 @csrf
                                 <textarea name="notes" class="form-control mb-2" rows="2" placeholder="Catatan finalisasi (opsional)"></textarea>
                                 <button class="btn btn-primary w-100"><i class="bi bi-patch-check me-1"></i>Finalisasi</button>

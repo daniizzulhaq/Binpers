@@ -7,9 +7,7 @@
 
 <div class="d-flex flex-column h-100">
     <div class="sidebar-brand d-flex align-items-center gap-2 px-3 py-3">
-        <span class="brand-badge brand-badge-sm">
-            <i class="bi bi-shield-check"></i>
-        </span>
+        <img src="{{ asset('images/logo-mark.png') }}" alt="Logo Binpers" width="40" height="40" class="flex-shrink-0">
         <div class="lh-sm">
             <div class="fw-semibold text-uppercase" style="letter-spacing:.08em;">
                 {{ config('app.name') }}
@@ -26,11 +24,9 @@
         @canany(['assessments.approve', 'reports.view'])
             <div class="sidebar-section">Pemantauan</div>
 
-            @can('assessments.approve')
-                <a href="{{ route('review.index') }}" class="sidebar-link {{ $on('review.*') }}">
-                    <i class="bi bi-clipboard-check"></i> Pemeriksaan
-                </a>
-            @endcan
+            <a href="{{ route('review.index') }}" class="sidebar-link {{ $on('review.*') }}">
+                <i class="bi bi-clipboard-check"></i> Pemeriksaan
+            </a>
 
             @can('reports.view')
                 @role('hrd')
@@ -61,13 +57,13 @@
                 <i class="bi bi-pencil-square"></i> Menilai Anggota
             </a>
 
-            <a href="{{ route('assessor.assessments.history') }}"
-               class="sidebar-link {{ $on('assessor.assessments.history', 'assessor.assessments.show') }}">
-                <i class="bi bi-clock-history"></i> Riwayat Penilaian Saya
+            <a href="{{ route('notes.create') }}" class="sidebar-link {{ $on('notes.create') }}">
+                <i class="bi bi-plus-circle"></i> Penilaian Harian
             </a>
 
-            <a href="{{ route('notes.create') }}" class="sidebar-link {{ $on('notes.create') }}">
-                <i class="bi bi-plus-circle"></i> Tulis Catatan
+            <a href="{{ route('assessor.assessments.history') }}"
+               class="sidebar-link {{ $on('assessor.assessments.history', 'assessor.assessments.show') }}">
+                <i class="bi bi-clock-history"></i> Riwayat Rekap Saya
             </a>
         @endcan
 

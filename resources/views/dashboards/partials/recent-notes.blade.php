@@ -11,12 +11,12 @@
                 {{ $noteCounts['positive'] ?? 0 }} apresiasi
             </span>
 
-            <span class="badge text-bg-warning">
+            <span class="badge text-bg-danger">
                 <i class="bi bi-exclamation-triangle me-1"></i>
                 {{ $noteCounts['negative'] ?? 0 }} teguran
             </span>
 
-            <span class="badge text-bg-danger">
+            <span class="badge text-bg-dark">
                 <i class="bi bi-file-earmark-x me-1"></i>
                 {{ $noteCounts['violation'] ?? 0 }} pelanggaran
             </span>

@@ -13,7 +13,7 @@ class PerformanceNote extends Model
     use Auditable;
 
     protected $fillable = [
-        'author_id', 'author_user_id', 'subject_id', 'unit_id',
+        'author_id', 'author_user_id', 'subject_id', 'unit_id', 'assessment_criterion_id',
         'type', 'level', 'points', 'title', 'note', 'image_path', 'incident_date',
     ];
 
@@ -45,6 +45,17 @@ class PerformanceNote extends Model
     public function unit(): BelongsTo
     {
         return $this->belongsTo(OrganizationalUnit::class, 'unit_id');
+    }
+
+    public function criterion(): BelongsTo
+    {
+        return $this->belongsTo(AssessmentCriterion::class, 'assessment_criterion_id');
+    }
+
+    /** Nama kriteria; catatan tanpa kriteria dihitung sebagai "Umum". */
+    public function criterionName(): string
+    {
+        return $this->criterion?->name ?? 'Umum';
     }
 
     /** Nama pencatat (akun), dengan cadangan ke data personel. */

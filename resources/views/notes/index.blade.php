@@ -1,14 +1,19 @@
 @extends(auth()->user()->layout())
 
-@section('title', 'Catatan Kinerja')
-@section('page-title', 'Catatan Kinerja')
+@php
+    // Bagi penilai, catatan = penilaian harian (digabung dengan menu Penilaian).
+    $pageTitle = auth()->user()->can('reports.view') ? 'Catatan Kinerja' : 'Penilaian Harian Saya';
+@endphp
+
+@section('title', $pageTitle)
+@section('page-title', $pageTitle)
 
 @section('content')
     @php
         $user = auth()->user();
         $d = $user->usesDesktopLayout();
         $canWrite = count($writeTypes) > 0;
-        $writeLabel = 'Tulis Catatan';
+        $writeLabel = $user->hasRole('hrd') ? 'Tulis Catatan' : 'Tambah Penilaian';
         $positive = (int) ($counts['positive'] ?? 0);
         $negative = (int) ($counts['negative'] ?? 0);
         $violation = (int) ($counts['violation'] ?? 0);
@@ -17,7 +22,7 @@
     <div class="mb-3">
         <div class="text-muted small mb-2">
             @if ($mineOnly)
-                Catatan yang Anda buat
+                {{ $seeAll ? 'Catatan yang Anda buat' : 'Penilaian harian yang Anda berikan' }}
             @else
                 Seluruh catatan
             @endif
@@ -59,9 +64,9 @@
             <div class="card border-0 shadow-sm h-100">
                 <div class="card-body p-3">
                     <div class="small text-muted">
-                        <i class="bi bi-exclamation-triangle text-warning me-1"></i>Teguran
+                        <i class="bi bi-exclamation-triangle text-danger me-1"></i>Teguran
                     </div>
-                    <div class="fs-3 fw-bold lh-1 mt-1" style="color:#b45309;">
+                    <div class="fs-3 fw-bold lh-1 mt-1" style="color:var(--bs-danger);">
                         {{ $negative }}
                     </div>
                 </div>
@@ -72,9 +77,9 @@
             <div class="card border-0 shadow-sm h-100">
                 <div class="card-body p-3">
                     <div class="small text-muted">
-                        <i class="bi bi-file-earmark-x text-danger me-1"></i>Pelanggaran
+                        <i class="bi bi-file-earmark-x text-dark me-1"></i>Pelanggaran
                     </div>
-                    <div class="fs-3 fw-bold text-danger lh-1 mt-1">
+                    <div class="fs-3 fw-bold text-dark lh-1 mt-1">
                         {{ $violation }}
                     </div>
                 </div>

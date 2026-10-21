@@ -5,7 +5,7 @@ namespace App\Http\Controllers;
 use App\Enums\NoteType;
 use App\Enums\RoleName;
 use App\Http\Requests\PerformanceNoteRequest;
-use App\Models\AssessmentAuthorization;
+use App\Models\AssessmentPeriod;
 use App\Models\PerformanceNote;
 use App\Models\Personnel;
 use App\Models\User;
@@ -54,7 +54,7 @@ class PerformanceNoteController extends Controller
             ->pluck('total', 'type');
 
         $notes = $base
-            ->with(['authorUser', 'author.currentAssignment.position', 'subject.user', 'unit'])
+            ->with(['authorUser', 'author.currentAssignment.position', 'subject.user', 'unit', 'criterion'])
             ->latest('incident_date')->latest('id')
             ->paginate(15)->withQueryString();
 
@@ -74,6 +74,8 @@ class PerformanceNoteController extends Controller
         $types = NoteType::allowedFor($user);
         abort_if($types === [], 403);
 
+        $period = AssessmentPeriod::open()->with('criteria')->first();
+
         return view('notes.form', [
             'note' => null,
             'subjects' => $user->hasRole(RoleName::Hrd->value)
@@ -81,6 +83,8 @@ class PerformanceNoteController extends Controller
                 : $this->subjectsFor($this->personnel($request)),
             'selected' => $request->integer('subject_id') ?: null,
             'types' => $types,
+            'period' => $period,
+            'criteria' => $period?->criteria ?? collect(),
         ]);
     }
 
@@ -123,6 +127,7 @@ class PerformanceNoteController extends Controller
                 'author_user_id' => $user->id,
                 'subject_id' => $subject->id,
                 'unit_id' => $subject->currentAssignment?->organizational_unit_id,
+                'assessment_criterion_id' => $type->hasPoints() ? ($data['assessment_criterion_id'] ?? null) : null,
                 'type' => $type,
                 'level' => $level,
                 // Poin disimpan saat dibuat; perubahan pengaturan HRD tidak mengubah catatan lama.
@@ -140,7 +145,10 @@ class PerformanceNoteController extends Controller
             throw $e;
         }
 
-        return redirect()->route('notes.index')->with('success', 'Catatan tersimpan.');
+        // Penilai kembali ke daftar anggota agar bisa langsung menilai yang lain.
+        return $user->hasRole(RoleName::Hrd->value) || ! $user->canAssess()
+            ? redirect()->route('notes.index')->with('success', 'Catatan tersimpan.')
+            : redirect()->route('assessor.assessments.index')->with('success', 'Penilaian harian tersimpan.');
     }
 
 
@@ -148,13 +156,16 @@ class PerformanceNoteController extends Controller
     {
         Gate::authorize('update', $note);
 
-        $note->load('subject.user');
+        $note->load('subject.user', 'criterion.period');
+        $period = $note->criterion?->period ?? AssessmentPeriod::forDate($note->incident_date);
 
         return view('notes.form', [
             'note' => $note,
             'subjects' => collect(),
             'selected' => null,
             'types' => NoteType::allowedFor($request->user()),
+            'period' => $period,
+            'criteria' => $period?->criteria ?? collect(),
         ]);
     }
 
@@ -167,6 +178,7 @@ class PerformanceNoteController extends Controller
         $type = NoteType::from($attributes['type']);
         $level = $type->hasPoints() && ! empty($attributes['level']) ? NoteLevel::from($attributes['level']) : null;
         $attributes['level'] = $level?->value;
+        $attributes['assessment_criterion_id'] = $type->hasPoints() ? ($attributes['assessment_criterion_id'] ?? null) : null;
 
         // Poin dihitung ulang hanya bila jenis atau tingkat berubah.
         if ($note->type !== $type || $note->level !== $level) {

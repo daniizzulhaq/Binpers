@@ -77,7 +77,7 @@
                     </div>
                     <div class="col-4">
                         <div class="text-muted">Teguran</div>
-                        <div class="fw-semibold" style="color:#b45309;">−{{ $score['penalty'] }}</div>
+                        <div class="fw-semibold" style="color:var(--bs-danger);">−{{ $score['penalty'] }}</div>
                     </div>
                 </div>
                 @if ($score['assessments'] > 1)
@@ -100,8 +100,8 @@
             <div class="col-4">
                 <a href="{{ route('notes.mine', ['type' => 'negative']) }}" class="text-decoration-none d-block h-100">
                     <div class="bp-card bp-stat h-100">
-                        <x-icon name="alert" :size="24" class="d-block mx-auto mb-1" style="color:#d97706;" />
-                        <div class="n" style="color:#b45309;">{{ $negative }}</div>
+                        <x-icon name="alert" :size="24" class="d-block mx-auto mb-1" style="color:var(--bs-danger);" />
+                        <div class="n" style="color:var(--bs-danger);">{{ $negative }}</div>
                         <div class="l">Teguran</div>
                     </div>
                 </a>
@@ -109,8 +109,8 @@
             <div class="col-4">
                 <a href="{{ route('notes.mine', ['type' => 'violation']) }}" class="text-decoration-none d-block h-100">
                     <div class="bp-card bp-stat h-100">
-                        <x-icon name="file-alert" :size="24" class="d-block mx-auto mb-1 text-danger" />
-                        <div class="n text-danger">{{ $violation }}</div>
+                        <x-icon name="file-alert" :size="24" class="d-block mx-auto mb-1 text-dark" />
+                        <div class="n text-dark">{{ $violation }}</div>
                         <div class="l">Pelanggaran</div>
                     </div>
                 </a>

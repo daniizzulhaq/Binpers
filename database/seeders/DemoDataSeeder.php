@@ -104,8 +104,8 @@ class DemoDataSeeder extends Seeder
                 ['Tanggung Jawab dan Hasil Kerja', 20, 'Menyelesaikan tugas sampai tuntas, tepat waktu, dengan hasil yang benar dan lengkap.'],
                 ['Inisiatif dan Kepedulian', 15, 'Peka terhadap kebutuhan tugas, bertindak sesuai kewenangan tanpa selalu menunggu perintah, serta memberikan solusi.'],
                 ['Etika dan Kerja Sama', 15, 'Sopan kepada pimpinan, rekan, dan bawahan; mau membantu; serta menerima koreksi dengan baik.'],
-                ['Pelayanan kepada Masyarakat', 15, 'Ramah, responsif, membantu masyarakat, dan tidak mempersulit pelayanan.'],
                 ['Integritas', 10, 'Jujur dalam laporan dan pelaksanaan tugas, tidak meminta imbalan, serta tidak menyalahgunakan kewenangan.'],
+                ['Pelayanan kepada Masyarakat', 15, 'Ramah, responsif, membantu masyarakat, dan tidak mempersulit pelayanan.'],
             ];
 
             foreach ($criteria as $i => [$name, $weight, $indicator]) {

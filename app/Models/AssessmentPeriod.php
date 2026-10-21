@@ -60,10 +60,12 @@ class AssessmentPeriod extends Model
         return (float) $this->criteria()->sum('weight');
     }
 
-    /** Kriteria tidak boleh diubah jika periode ditutup atau sudah ada penilaian. */
+    /** Kriteria tidak boleh diubah jika periode ditutup, sudah ada penilaian, atau sudah dipakai penilaian harian. */
     public function isCriteriaLocked(): bool
     {
-        return $this->status === PeriodStatus::Closed || $this->assessments()->exists();
+        return $this->status === PeriodStatus::Closed
+            || $this->assessments()->exists()
+            || PerformanceNote::whereIn('assessment_criterion_id', $this->criteria()->select('id'))->exists();
     }
 
     public function isRecapLocked(): bool

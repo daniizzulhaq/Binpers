@@ -53,6 +53,38 @@
             @endif
         </div>
 
+        {{-- Menunggu persetujuan saya (atasan struktural) --}}
+        @if ($ah['reviews'])
+            <div class="bp-card mb-3 p-3">
+                <div class="d-flex align-items-center">
+                    <div class="bp-title mb-0"><x-icon name="check-circle" :size="16" :stroke="2" />Menunggu Persetujuan</div>
+                    <a href="{{ route('assessor.reviews.index') }}" class="small ms-auto">Lihat semua</a>
+                </div>
+                <div class="d-flex align-items-baseline gap-2 mt-2 mb-1">
+                    <span class="fs-3 fw-bold" style="color:var(--bp-navy);">{{ $ah['reviews']['count'] }}</span>
+                    <span class="small text-muted">penilaian dari Kanit/Kasubag menunggu persetujuan Anda</span>
+                </div>
+
+                @forelse ($ah['reviews']['top'] as $r)
+                    <a href="{{ route('assessor.reviews.show', $r) }}"
+                       class="d-flex align-items-center gap-2 py-2 border-top text-decoration-none text-body">
+                        <div class="min-w-0 flex-grow-1">
+                            <div class="fw-semibold text-break">{{ $r->assessee->user->name }}</div>
+                            <div class="small text-muted text-break">
+                                Penilai {{ $r->assessor->user->name }} · {{ $r->period->name }}
+                            </div>
+                        </div>
+                        @if ($r->final_score !== null)
+                            <span class="badge text-bg-light border">{{ number_format((float) $r->final_score, 2) }}</span>
+                        @endif
+                        <x-icon name="chevron" :size="18" class="text-muted" />
+                    </a>
+                @empty
+                    <div class="text-muted small border-top pt-2">Tidak ada penilaian yang menunggu persetujuan.</div>
+                @endforelse
+            </div>
+        @endif
+
         {{-- Aksi cepat --}}
         <div class="row g-2 mb-3">
             <div class="col-6">
@@ -62,7 +94,7 @@
             </div>
             <div class="col-6">
                 <a href="{{ route('notes.create') }}" class="bp-action bp-action-gold h-100">
-                    <x-icon name="pencil" :size="26" /><span>Tulis Catatan</span>
+                    <x-icon name="pencil" :size="26" /><span>Penilaian Harian</span>
                 </a>
             </div>
         </div>
@@ -108,10 +140,10 @@
         {{-- Catatan yang saya buat --}}
         <div class="bp-card mb-3 p-3">
             <div class="d-flex align-items-center">
-                <div class="bp-title mb-0">Catatan yang Saya Buat</div>
+                <div class="bp-title mb-0">Penilaian Harian Saya</div>
                 <a href="{{ route('notes.index') }}" class="small ms-auto">Lihat semua</a>
             </div>
-            <div class="small text-muted mt-1 mb-2">{{ $ah['notesMonth'] }} catatan bulan ini</div>
+            <div class="small text-muted mt-1 mb-2">{{ $ah['notesMonth'] }} penilaian bulan ini</div>
 
             @forelse ($ah['recentGiven'] as $n)
                 <div class="d-flex align-items-start gap-2 py-2 border-top">

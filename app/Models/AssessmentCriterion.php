@@ -37,6 +37,11 @@ class AssessmentCriterion extends Model
         return $this->hasMany(AssessmentDetail::class, 'assessment_criterion_id');
     }
 
+    public function notes(): HasMany
+    {
+        return $this->hasMany(PerformanceNote::class, 'assessment_criterion_id');
+    }
+
     /** Ubah skor sesuai skala kriteria ini menjadi 0–100. */
     public function normalize(float $score): float
     {

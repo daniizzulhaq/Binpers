@@ -2,16 +2,28 @@
 
 @php
     $isHrd = auth()->user()->hasRole('hrd');
-    $formTitle = $note ? 'Ubah Catatan' : 'Tulis Catatan';
+    $formTitle = $isHrd
+        ? ($note ? 'Ubah Catatan' : 'Tulis Catatan')
+        : ($note ? 'Ubah Penilaian Harian' : 'Penilaian Harian');
+    $backRoute = $isHrd || ! auth()->user()->canAssess() ? 'notes.index' : 'assessor.assessments.index';
+    // Penilai hanya dapat menilai pada periode yang sedang dibuka dan wajib memilih kriteria.
+    $noCriteria = ! $isHrd && $criteria->isEmpty();
 @endphp
 
 @section('title', $formTitle)
 @section('page-title', $formTitle)
 
 @section('content')
-    <a href="{{ route('notes.index') }}" class="btn btn-link px-0 mb-2">
+    <a href="{{ route($backRoute) }}" class="btn btn-link px-0 mb-2">
         <i class="bi bi-arrow-left me-1"></i>Kembali ke daftar
     </a>
+
+    @if ($noCriteria)
+        <div class="alert alert-warning small">
+            Belum ada periode penilaian yang dibuka (atau kriterianya belum diatur HRD).
+            Penilaian harian dapat diisi setelah periode dibuka.
+        </div>
+    @endif
 
     @if ($errors->any())
         <div class="alert alert-danger">
@@ -72,9 +84,66 @@
                     @endif
                 </div>
 
+                {{-- Kriteria (Disiplin, Kerja Sama, ...) --}}
+                @php
+                    $chosenCriterion = (int) old('assessment_criterion_id', $note?->assessment_criterion_id);
+                @endphp
+
+                <div class="mb-3" id="criterionBox">
+                    <label class="form-label d-block">
+                        Kriteria
+                        @if ($isHrd)
+                            <span class="text-muted fw-normal">(opsional, kosong = Umum)</span>
+                        @endif
+                    </label>
+
+                    @if ($criteria->isNotEmpty())
+                        <div class="row g-2">
+                            @if ($isHrd || ($note && ! $note->assessment_criterion_id))
+                                <div class="col-6 col-sm-4">
+                                    <input type="radio" class="btn-check" name="assessment_criterion_id"
+                                           id="criterion-none" value="" @checked(! $chosenCriterion)
+                                           data-name="Umum" data-description="Tidak terkait kriteria tertentu; poin langsung menambah atau mengurangi nilai akhir.">
+                                    <label class="btn btn-outline-secondary w-100 h-100 py-2 px-1" for="criterion-none">Umum</label>
+                                </div>
+                            @endif
+
+                            @foreach ($criteria as $c)
+                                <div class="col-6 col-sm-4">
+                                    <input type="radio" class="btn-check" name="assessment_criterion_id"
+                                           id="criterion-{{ $c->id }}" value="{{ $c->id }}"
+                                           data-name="{{ $c->name }}" data-description="{{ $c->description }}"
+                                           @required(! $isHrd)
+                                           @checked($chosenCriterion === $c->id)>
+                                    <label class="btn btn-outline-primary w-100 h-100 py-2 px-1 text-break" for="criterion-{{ $c->id }}">
+                                        {{ $c->name }}
+                                    </label>
+                                </div>
+                            @endforeach
+                        </div>
+
+                        {{-- Indikator kriteria yang sedang dipilih --}}
+                        <div id="indicatorBox" class="small p-2 mt-2 rounded d-none"
+                             style="background:#f4f6fa;border-left:3px solid #c9a227;">
+                            <div class="fw-semibold mb-1">Indikator yang dinilai: <span id="indicatorName"></span></div>
+                            <div id="indicatorText"></div>
+                        </div>
+
+                        @if ($period)
+                            <div class="form-text">Kriteria periode {{ $period->name }}.</div>
+                        @endif
+                    @else
+                        <div class="form-control-plaintext text-muted">Umum (belum ada kriteria periode)</div>
+                    @endif
+
+                    @error('assessment_criterion_id')
+                        <div class="invalid-feedback d-block">{{ $message }}</div>
+                    @enderror
+                </div>
+
                 {{-- Jenis catatan --}}
                 <div class="mb-3">
-                    <label class="form-label d-block">Jenis catatan</label>
+                    <label class="form-label d-block">{{ $isHrd ? 'Jenis catatan' : 'Apresiasi atau teguran' }}</label>
 
                     @php
                         $count = count($types);
@@ -160,7 +229,8 @@
                     @endforeach
 
                     <div class="form-text">
-                        Poin dihitung ke nilai bulan pada tanggal kejadian.
+                        Apresiasi menambah dan teguran mengurangi nilai kriteria yang dipilih,
+                        pada bulan tanggal kejadian.
                     </div>
 
                     @error('level')
@@ -176,7 +246,8 @@
                            id="incident_date"
                            name="incident_date"
                            required
-                           max="{{ now()->format('Y-m-d') }}"
+                           max="{{ ! $isHrd && $period && $period->end_date->lt(today()) ? $period->end_date->format('Y-m-d') : now()->format('Y-m-d') }}"
+                           @if (! $isHrd && $period) min="{{ $period->start_date->format('Y-m-d') }}" @endif
                            value="{{ old('incident_date', $note?->incident_date?->format('Y-m-d') ?? now()->format('Y-m-d')) }}"
                            class="form-control @error('incident_date') is-invalid @enderror">
 
@@ -284,11 +355,11 @@
                 {{-- Tombol --}}
                 <div class="d-grid gap-2 d-sm-flex">
                     <button class="btn btn-primary"
-                            @disabled(! $note && $subjects->isEmpty())>
-                        <i class="bi bi-save me-1"></i>Simpan Catatan
+                            @disabled((! $note && $subjects->isEmpty()) || $noCriteria)>
+                        <i class="bi bi-save me-1"></i>{{ $isHrd ? 'Simpan Catatan' : 'Simpan Penilaian' }}
                     </button>
 
-                    <a href="{{ route('notes.index') }}"
+                    <a href="{{ route($backRoute) }}"
                        class="btn btn-outline-secondary">
                         Batal
                     </a>
@@ -379,6 +450,29 @@
 
     <script>
         (function () {
+            const box = document.getElementById('indicatorBox');
+
+            if (!box) return;
+
+            function show() {
+                const picked = document.querySelector('input[name="assessment_criterion_id"]:checked');
+                const text = picked ? picked.dataset.description : '';
+
+                box.classList.toggle('d-none', !text);
+                document.getElementById('indicatorName').textContent = picked ? picked.dataset.name : '';
+                document.getElementById('indicatorText').textContent = text || '';
+            }
+
+            document.querySelectorAll('input[name="assessment_criterion_id"]').forEach(function (radio) {
+                radio.addEventListener('change', show);
+            });
+
+            show();
+        })();
+    </script>
+
+    <script>
+        (function () {
             const box = document.getElementById('levelBox');
 
             if (!box) return;
@@ -408,6 +502,15 @@
                 });
 
                 box.classList.toggle('d-none', !shown);
+
+                // Kriteria hanya untuk Apresiasi/Teguran (bukan Riwayat Pelanggaran).
+                const criterionBox = document.getElementById('criterionBox');
+                if (criterionBox) {
+                    criterionBox.classList.toggle('d-none', type === 'violation');
+                    criterionBox.querySelectorAll('input').forEach(function (input) {
+                        input.disabled = type === 'violation';
+                    });
+                }
             }
 
             document.querySelectorAll('input[name="type"]').forEach(function (radio) {

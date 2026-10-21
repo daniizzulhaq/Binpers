@@ -7,8 +7,7 @@
     @php
         $d = auth()->user()->usesDesktopLayout();
         $tabs = [
-            'wajib' => 'Wajib',
-            'lintas' => 'Lintas Unit',
+            'wajib' => 'Bawahan Langsung',
             'semua' => 'Semua',
         ];
     @endphp
@@ -29,7 +28,16 @@
         </div>
     @endif
 
-    {{-- Tab wajib / lintas / semua --}}
+    <div class="d-flex justify-content-end gap-2 mb-2">
+        <a href="{{ route('notes.index') }}" class="btn btn-sm btn-outline-primary">
+            <x-icon name="notebook" :size="16" class="me-1" />Penilaian harian saya
+        </a>
+        <a href="{{ route('assessor.assessments.history') }}" class="btn btn-sm btn-outline-primary">
+            <x-icon name="history" :size="16" class="me-1" />Riwayat rekap
+        </a>
+    </div>
+
+    {{-- Tab bawahan langsung / semua --}}
     <ul class="nav nav-pills nav-fill gap-1 mb-3">
         @foreach ($tabs as $key => $label)
             <li class="nav-item">
@@ -50,7 +58,7 @@
         <div class="{{ $d ? 'col-8 col-md-4' : 'col-8' }}">
             <select name="status" class="form-select" aria-label="Status penilaian">
                 <option value="">Semua status</option>
-                <option value="belum" @selected(request('status') === 'belum')>Belum dinilai</option>
+                <option value="belum" @selected(request('status') === 'belum')>Rekap belum dikirim</option>
                 @foreach ($statuses as $s)
                     <option value="{{ $s->value }}" @selected(request('status') === $s->value)>{{ $s->label() }}</option>
                 @endforeach
@@ -77,7 +85,7 @@
                                 <div class="small text-muted">{{ $p->rank ?: '-' }} · NRP {{ $p->nrp }}</div>
                             </div>
                             <span class="badge {{ $isWajib ? 'text-bg-primary' : 'text-bg-light border' }}">
-                                {{ $isWajib ? 'Wajib' : 'Lintas unit' }}
+                                {{ $isWajib ? 'Bawahan langsung' : 'Lintas unit' }}
                             </span>
                         </div>
 
@@ -85,24 +93,35 @@
                             {{ $cur?->position?->name ?? '-' }} · {{ $cur?->unit?->name ?? '-' }}
                         </div>
 
-                        <div class="mt-2">
+                        @php $sum = $summary->get($p->id); @endphp
+
+                        <div class="d-flex flex-wrap align-items-center gap-2 mt-2">
                             @if ($a)
                                 <span class="badge text-bg-{{ $a->status->color() }}">{{ $a->status->label() }}</span>
                             @else
-                                <span class="badge text-bg-secondary">Belum dinilai</span>
+                                <span class="badge text-bg-secondary">Rekap belum dikirim</span>
+                            @endif
+
+                            @if ($sum)
+                                <span class="small text-muted">
+                                    {{ $sum['count'] }} penilaian bulan ini ·
+                                    nilai <strong class="text-body">{{ rtrim(rtrim(number_format($sum['final'], 2, ',', '.'), '0'), ',') }}</strong>
+                                </span>
                             @endif
                         </div>
 
-                        <div class="d-flex gap-2 mt-3">
-                            @if ($a && ! $a->status->editable())
-                                <a href="{{ route('assessor.assessments.show', $a) }}" class="btn btn-sm btn-outline-primary flex-fill">Lihat</a>
-                            @elseif ($period)
-                                <a href="{{ route('assessor.assessments.form', [$period, $p]) }}" class="btn btn-sm btn-primary flex-fill">
-                                    {{ $a ? 'Lanjutkan' : 'Nilai' }}
-                                </a>
-                            @endif
-                            <a href="{{ route('notes.create', ['subject_id' => $p->id]) }}" class="btn btn-sm btn-outline-secondary flex-fill">Catat</a>
-                        </div>
+                        @if ($period)
+                            <div class="d-flex gap-2 mt-3">
+                                @if ($a && ! $a->status->editable())
+                                    <a href="{{ route('assessor.assessments.show', $a) }}" class="btn btn-sm btn-outline-primary flex-fill">Lihat Rekap</a>
+                                @else
+                                    <a href="{{ route('notes.create', ['subject_id' => $p->id]) }}" class="btn btn-sm btn-primary flex-fill">
+                                        <x-icon name="pencil" :size="16" class="me-1" />Nilai
+                                    </a>
+                                    <a href="{{ route('assessor.assessments.form', [$period, $p]) }}" class="btn btn-sm btn-outline-primary flex-fill">Rekap</a>
+                                @endif
+                            </div>
+                        @endif
                     </div>
                 </div>
             </div>

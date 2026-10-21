@@ -102,7 +102,7 @@
                                     @endif
                                 </td>
                                 <td class="text-end text-success">+{{ $r['bonus'] }}</td>
-                                <td class="text-end" style="color:#b45309;">−{{ $r['penalty'] }}</td>
+                                <td class="text-end" style="color:var(--bs-danger);">−{{ $r['penalty'] }}</td>
                                 <td class="text-end fw-bold">
                                     {{ $r['total'] !== null ? number_format($r['total'], 2) : '–' }}
                                 </td>

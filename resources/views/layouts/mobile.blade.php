@@ -6,6 +6,7 @@
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <meta name="theme-color" content="#0b2a5b">
     <title>@yield('title', 'Beranda') — {{ config('app.name') }}</title>
+    <link rel="icon" type="image/png" href="{{ asset('images/favicon.png') }}">
     @vite(['resources/scss/app.scss', 'resources/js/app.js'])
     @stack('styles')
 
@@ -25,6 +26,25 @@
             max-width: var(--bp-width); margin: 0 auto;
             background: var(--bp-bg);
             box-shadow: 0 0 28px rgba(7,27,61,.16);
+        }
+
+        /* Layar lebar: scroll di tepi bingkai, bukan di tepi jendela */
+        @media (min-width: 451px) {
+            html, body.bp-body { height: 100%; overflow: hidden; }
+            .bp-shell {
+                height: 100vh; overflow-y: auto; overscroll-behavior: contain;
+                scrollbar-width: thin; scrollbar-color: #b7c0cf transparent;
+            }
+            .bp-shell::-webkit-scrollbar { width: 6px; }
+            .bp-shell::-webkit-scrollbar-track { background: transparent; }
+            .bp-shell::-webkit-scrollbar-thumb { background: #b7c0cf; border-radius: 3px; }
+            .bp-shell::-webkit-scrollbar-thumb:hover { background: #8f9bb0; }
+        }
+
+        /* HP: tetap bisa scroll, scrollbar disembunyikan */
+        @media (max-width: 450px) {
+            html, body.bp-body { scrollbar-width: none; }
+            html::-webkit-scrollbar, body.bp-body::-webkit-scrollbar { display: none; }
         }
 
         .bp-i { display: inline-block; vertical-align: -.125em; flex-shrink: 0; }
@@ -49,6 +69,9 @@
             background: rgba(255,255,255,.1); border: 1px solid rgba(201,162,39,.65);
         }
         .bp-logo img { width: 100%; height: 100%; object-fit: contain; padding: 3px; }
+        /* Logo gambar: tanpa kotak bingkai agar lambang terlihat penuh */
+        .bp-logo:has(img) { width: 46px; height: 46px; background: none; border: 0; border-radius: 0; }
+        .bp-logo:has(img) img { padding: 0; }
         .bp-logo-star {
             position: absolute; top: 50%; left: 50%; font-size: .55rem;
             color: var(--bp-navy-dark); transform: translate(-50%, -58%);
@@ -128,6 +151,13 @@
         }
         .bp-nav a i { font-size: 1.3rem; }
         .bp-nav a.active { color: var(--bp-navy); font-weight: 600; }
+        .bp-nav-icon { position: relative; display: inline-flex; }
+        .bp-nav-badge {
+            position: absolute; top: -5px; right: -10px; min-width: 17px; height: 17px; padding: 0 4px;
+            display: flex; align-items: center; justify-content: center;
+            border-radius: 9px; font-size: .62rem; font-weight: 700; line-height: 1; color: #fff;
+            background: #dc3545; border: 2px solid #fff;
+        }
         .bp-nav a.active::before {
             content: ""; position: absolute; top: 0; left: 28%; right: 28%; height: 3px;
             border-radius: 0 0 3px 3px; background: var(--bp-gold);
@@ -139,7 +169,7 @@
         $bpUser = auth()->user();
         $bpUnread = $bpUser->unreadNotifications()->count();
         $bpHome = $bpUser->homeRoute() ?? 'profile.show';
-        $bpLogo = file_exists(public_path('images/logo.png'));
+        $bpLogo = file_exists(public_path('images/logo-mark.png'));
     @endphp
 
     <div class="bp-shell">
@@ -148,7 +178,7 @@
                 <a href="{{ route($bpHome) }}" class="bp-brand">
                      <span class="bp-logo">
                         @if ($bpLogo)
-                            <img src="{{ asset('images/logo.png') }}" alt="Logo">
+                            <img src="{{ asset('images/logo-mark.png') }}" alt="Logo Binpers">
                         @else
                             <x-icon name="badge" :size="28" :stroke="1.6" />
                         @endif

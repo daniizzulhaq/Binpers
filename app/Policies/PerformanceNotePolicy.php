@@ -6,6 +6,7 @@ use App\Enums\RoleName;
 use App\Models\AssessmentPeriod;
 use App\Models\PerformanceNote;
 use App\Models\User;
+use App\Services\DailyScoreService;
 
 class PerformanceNotePolicy
 {
@@ -26,12 +27,14 @@ class PerformanceNotePolicy
 
     public function update(User $user, PerformanceNote $note): bool
     {
-        return $this->owns($user, $note) && $this->withinWindow($note) && $this->notLocked($note);
+        return $this->owns($user, $note) && $this->withinWindow($note) && $this->notLocked($note)
+            && $this->recapOpen($note);
     }
 
     public function delete(User $user, PerformanceNote $note): bool
     {
-        return $this->owns($user, $note) && $this->withinWindow($note) && $this->notLocked($note);
+        return $this->owns($user, $note) && $this->withinWindow($note) && $this->notLocked($note)
+            && $this->recapOpen($note);
     }
 
     /** Hanya akun pembuat. HRD untuk semua jenis; penilai hanya jenis yang bukan khusus HRD. */
@@ -57,5 +60,11 @@ class PerformanceNotePolicy
     private function notLocked(PerformanceNote $note): bool
     {
         return ! AssessmentPeriod::recapLockedForDate($note->incident_date);
+    }
+
+    /** Penilaian harian terkunci setelah rekap penilainya atas anggota itu dikirim. */
+    private function recapOpen(PerformanceNote $note): bool
+    {
+        return ! app(DailyScoreService::class)->recapSubmitted($note->author_id, $note->subject_id, $note->incident_date);
     }
 }

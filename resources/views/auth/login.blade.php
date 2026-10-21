@@ -6,7 +6,8 @@
     <div class="card shadow border-0">
         <div class="card-body p-4 p-md-5">
             <div class="text-center mb-4">
-                <div class="brand-badge mb-3"><i class="bi bi-shield-check"></i></div>
+                <img src="{{ asset('images/logo.png') }}" alt="Logo Pembinaan Personil Polres TTS"
+                     class="d-block mx-auto mb-3" style="width: 160px; height: auto;">
                 <h1 class="h4 fw-bold text-primary mb-1">{{ config('app.name') }}</h1>
                 <p class="text-muted small mb-0">Masuk untuk melanjutkan</p>
             </div>

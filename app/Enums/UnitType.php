@@ -8,6 +8,7 @@ enum UnitType: string
     case Bagian = 'bagian';
     case Satuan = 'satuan';
     case Seksi = 'seksi';
+    case Subbag = 'subbag';
     case Unit = 'unit';
     case Polsek = 'polsek';
 

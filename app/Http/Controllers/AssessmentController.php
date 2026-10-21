@@ -5,23 +5,23 @@ namespace App\Http\Controllers;
 use App\Enums\AssessmentStatus;
 use App\Http\Requests\AssessmentScoreRequest;
 use App\Models\Assessment;
-use App\Models\AssessmentAuthorization;
 use App\Models\AssessmentPeriod;
 use App\Models\Personnel;
 use App\Services\AssessmentService;
+use App\Services\AssessorScopeService;
+use App\Services\DailyScoreService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use App\Services\AssessorScopeService;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\View\View;
 
 class AssessmentController extends Controller
 {
-    public function __construct(private AssessmentService $service)
+    public function __construct(private AssessmentService $service, private DailyScoreService $daily)
     {
     }
 
-    /** Daftar anggota yang menjadi kewenangan penilai pada periode yang sedang dibuka. */
+    /** Daftar anggota yang menjadi kewenangan penilai, dengan nilai sementara dari penilaian harian bulan ini. */
     public function index(Request $request, AssessorScopeService $scope): View
     {
         $me = $this->personnel($request);
@@ -35,6 +35,7 @@ class AssessmentController extends Controller
         $total = $scope->assesseeQuery($me)->count();
 
         $kind = $request->input('kind', $mandatory->isNotEmpty() ? 'wajib' : 'semua');
+        $kind = in_array($kind, ['wajib', 'semua'], true) ? $kind : 'semua';
         $status = $request->string('status')->value();
 
         $people = $scope->assesseeQuery($me)
@@ -45,7 +46,6 @@ class AssessmentController extends Controller
                     ->orWhereHas('user', fn ($u) => $u->where('name', 'like', $term)));
             })
             ->when($kind === 'wajib', fn ($q) => $q->whereIn('personnel.id', $mandatory->keys()))
-            ->when($kind === 'lintas', fn ($q) => $q->whereNotIn('personnel.id', $mandatory->keys()))
             ->when($status === 'belum', fn ($q) => $q->whereNotIn('personnel.id', $assessed->keys()))
             ->when($status && AssessmentStatus::tryFrom($status), fn ($q) => $q->whereIn(
                 'personnel.id',
@@ -54,15 +54,19 @@ class AssessmentController extends Controller
             ->orderBy('nrp')
             ->paginate(15)->withQueryString();
 
+        $summary = $period
+            ? $this->daily->summarize($period, $me->id, $people->getCollection()->pluck('id'))
+            : collect();
+
         return view('assessor.assessments.index', [
             'period' => $period,
             'people' => $people,
             'assessed' => $assessed,
+            'summary' => $summary,
             'mandatory' => $mandatory,
             'kind' => $kind,
             'counts' => [
                 'wajib' => $mandatory->count(),
-                'lintas' => max(0, $total - $mandatory->count()),
                 'semua' => $total,
             ],
             'statuses' => AssessmentStatus::cases(),
@@ -112,12 +116,15 @@ class AssessmentController extends Controller
             'assessee' => $assessee->load(['user', 'currentAssignment.unit', 'currentAssignment.position']),
             'assessment' => $assessment,
             'criteria' => $period->criteria,
-            'details' => $assessment?->details->keyBy('assessment_criterion_id') ?? collect(),
+            'summary' => $this->daily->summarize($period, $me->id, collect([$assessee->id]))->get($assessee->id),
+            'notes' => $this->daily->notesQuery($period, $me->id, $assessee->id)
+                ->with('criterion')->latest('incident_date')->latest('id')->get(),
+            'baseScore' => $this->daily->baseScore(),
             'revisionNotes' => $assessment?->approvals()->where('action', 'return')->first()?->notes,
         ]);
     }
 
-    /** Simpan draft, atau simpan lalu kirim bila tombol "Kirim Penilaian" ditekan. */
+    /** Simpan catatan rekap sebagai draft, atau simpan lalu kirim bila tombol "Kirim Rekap" ditekan. */
     public function save(AssessmentScoreRequest $request, AssessmentPeriod $period, Personnel $assessee): RedirectResponse
     {
         $data = $request->validated();
@@ -125,21 +132,21 @@ class AssessmentController extends Controller
         $assessment = $this->service->saveDraft($this->personnel($request), $period, $assessee, $data);
 
         if ($data['action'] === 'submit') {
-            $this->service->submit($assessment, $request->user());
+            $assessment = $this->service->submit($assessment, $request->user());
 
-            return redirect()->route('assessor.assessments.show', $assessment)->with('success', 'Penilaian berhasil dikirim.');
+            return redirect()->route('assessor.assessments.show', $assessment)->with('success', $this->submittedMessage($assessment));
         }
 
-        return redirect()->route('assessor.assessments.form', [$period, $assessee])->with('success', 'Draft tersimpan.');
+        return redirect()->route('assessor.assessments.form', [$period, $assessee])->with('success', 'Catatan rekap tersimpan.');
     }
 
     public function submit(Request $request, Assessment $assessment): RedirectResponse
     {
         Gate::authorize('submit', $assessment);
 
-        $this->service->submit($assessment, $request->user());
+        $assessment = $this->service->submit($assessment, $request->user());
 
-        return redirect()->route('assessor.assessments.show', $assessment)->with('success', 'Penilaian berhasil dikirim.');
+        return redirect()->route('assessor.assessments.show', $assessment)->with('success', $this->submittedMessage($assessment));
     }
 
     public function show(Request $request, Assessment $assessment): View
@@ -153,6 +160,13 @@ class AssessmentController extends Controller
         ]);
 
         return view('assessor.assessments.show', compact('assessment'));
+    }
+
+    private function submittedMessage(Assessment $assessment): string
+    {
+        return $assessment->status === AssessmentStatus::Finalized
+            ? 'Rekap penilaian dikirim dan langsung final.'
+            : 'Rekap penilaian berhasil dikirim untuk disetujui.';
     }
 
     private function personnel(Request $request): Personnel

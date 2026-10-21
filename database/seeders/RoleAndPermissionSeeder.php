@@ -25,6 +25,7 @@ class RoleAndPermissionSeeder extends Seeder
             'criteria.manage',
             'assessments.create',
             'assessments.approve',
+            'assessments.review-structural',
             'assessments.finalize',
             'assessments.view-own',
             'rewards.manage',
@@ -38,21 +39,23 @@ class RoleAndPermissionSeeder extends Seeder
         }
 
         $assessor = ['assessments.create', 'assessments.view-own'];
+        // Kepala bagian/satuan/seksi/polsek: menyetujui penilaian Kanit/Kasubag bawahannya.
+        $structuralHead = [...$assessor, 'assessments.review-structural'];
 
         $map = [
             RoleName::Hrd->value => [
                 'users.manage', 'personnel.manage', 'organization.manage', 'positions.manage',
                 'authorizations.manage', 'assessment-rules.manage', 'periods.manage', 'criteria.manage',
-                'assessments.approve', 'assessments.finalize',
+                // HRD hanya memantau penilaian: tidak menyetujui maupun memfinalisasi.
                 'rewards.manage', 'reports.view', 'analytics.view', 'audit-logs.view',
             ],
             RoleName::Kapolres->value => ['assessments.create', 'assessments.approve', 'reports.view', 'analytics.view'],
             RoleName::Wakapolres->value => ['assessments.create', 'assessments.approve', 'reports.view', 'analytics.view'],
-            RoleName::Kabag->value => $assessor,
-            RoleName::Kasat->value => $assessor,
-            RoleName::KasiPengawas->value => $assessor,
-            RoleName::Kasi->value => $assessor,
-            RoleName::Kapolsek->value => $assessor,
+            RoleName::Kabag->value => $structuralHead,
+            RoleName::Kasat->value => $structuralHead,
+            RoleName::KasiPengawas->value => $structuralHead,
+            RoleName::Kasi->value => $structuralHead,
+            RoleName::Kapolsek->value => $structuralHead,
             RoleName::Wakapolsek->value => $assessor,
             RoleName::Kanit->value => $assessor,
             RoleName::Anggota->value => ['assessments.view-own'],

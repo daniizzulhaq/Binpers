@@ -4,6 +4,8 @@ namespace App\Models;
 
 use App\Enums\AssessmentStatus;
 use App\Models\Concerns\Auditable;
+use App\Services\DailyScoreService;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -11,6 +13,14 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 class Assessment extends Model
 {
     use Auditable;
+
+    /** Tujuan persetujuan: atasan struktural penilai, atau pimpinan (Kapolres/Wakapolres/HRD). */
+    public const REVIEW_STRUCTURAL = 'structural';
+    public const REVIEW_LEADERSHIP = 'leadership';
+    /** Penilaian oleh Wakapolres: hanya Kapolres yang menyetujui. */
+    public const REVIEW_KAPOLRES = 'kapolres';
+    /** Penilaian oleh Kapolres: langsung final saat dikirim (tidak ada atasan di sistem). */
+    public const REVIEW_SELF = 'self';
 
     /**
      * Kolom alur kerja (status, nilai akhir, waktu) sengaja TIDAK fillable.
@@ -60,6 +70,18 @@ class Assessment extends Model
         return $this->belongsTo(Position::class, 'assessee_position_id');
     }
 
+    /** Unit induk yang kepalanya menyetujui (hanya untuk persetujuan struktural). */
+    public function reviewerUnit(): BelongsTo
+    {
+        return $this->belongsTo(OrganizationalUnit::class, 'reviewer_unit_id');
+    }
+
+    /** Data lama tanpa review_level diperlakukan sebagai persetujuan pimpinan. */
+    public function isStructuralReview(): bool
+    {
+        return $this->review_level === self::REVIEW_STRUCTURAL && $this->reviewer_unit_id !== null;
+    }
+
     public function finalizer(): BelongsTo
     {
         return $this->belongsTo(User::class, 'finalized_by');
@@ -73,5 +95,15 @@ class Assessment extends Model
     public function approvals(): HasMany
     {
         return $this->hasMany(AssessmentApproval::class)->latest('id');
+    }
+
+    /** Penilaian harian penilai atas anggota ini pada periode rekap (dasar perhitungan nilai). */
+    public function dailyNotes(): Collection
+    {
+        return app(DailyScoreService::class)
+            ->notesQuery($this->period, $this->assessor_id, $this->assessee_id)
+            ->with('criterion')
+            ->latest('incident_date')->latest('id')
+            ->get();
     }
 }

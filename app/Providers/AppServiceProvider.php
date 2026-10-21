@@ -8,6 +8,7 @@ use App\Models\AssessmentPeriod;
 use App\Models\PerformanceNote;
 use App\Services\AssessorScopeService;
 use App\Services\MonthlyScoreService;
+use App\Services\ReviewRoutingService;
 use Illuminate\Pagination\Paginator;
 
 use Illuminate\Support\Facades\URL;
@@ -48,6 +49,21 @@ class AppServiceProvider extends ServiceProvider
 
             $period = AssessmentPeriod::open()->first();
 
+            // Antrean persetujuan untuk Kabag, Kasat, Kasi, Kasi Pengawas, dan Kapolsek.
+            $reviews = null;
+
+            if (auth()->user()->can('assessments.review-structural')) {
+                $queue = app(ReviewRoutingService::class)->queueFor(auth()->user());
+
+                $reviews = [
+                    'count' => (clone $queue)->count(),
+                    'top' => $queue->with(['assessee.user', 'assessor.user', 'period:id,name'])
+                        ->latest('submitted_at')
+                        ->limit(3)
+                        ->get(),
+                ];
+            }
+
             $status = $period
                 ? Assessment::where('assessment_period_id', $period->id)
                     ->where('assessor_id', $me->id)
@@ -65,6 +81,7 @@ class AppServiceProvider extends ServiceProvider
                     ->mandatoryQuery($me)
                     ->count(),
                 'status' => $status,
+                'reviews' => $reviews,
                 'revisions' => Assessment::with(['assessee.user', 'period:id,name'])
                     ->where('assessor_id', $me->id)
                     ->where('status', AssessmentStatus::Revision->value)
@@ -139,6 +156,7 @@ class AppServiceProvider extends ServiceProvider
                 ? PerformanceNote::with([
                     'authorUser',
                     'author.currentAssignment.position',
+                    'criterion',
                 ])
                     ->where('subject_id', $me->id)
                     ->latest('incident_date')
@@ -171,6 +189,7 @@ class AppServiceProvider extends ServiceProvider
                     'author.currentAssignment.position',
                     'subject.user',
                     'unit',
+                    'criterion',
                 ])
                     ->latest('incident_date')
                     ->latest('id')

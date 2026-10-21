@@ -41,7 +41,7 @@ class NotificationController extends Controller
 
     private function targetUrl(User $user, int $assessmentId): string
     {
-        $assessment = Assessment::select(['id', 'assessor_id', 'assessee_id'])->find($assessmentId);
+        $assessment = Assessment::select(['id', 'assessor_id', 'assessee_id', 'review_level', 'reviewer_unit_id'])->find($assessmentId);
 
         if (! $assessment) {
             return route('notifications.index');
@@ -51,7 +51,9 @@ class NotificationController extends Controller
 
         return match (true) {
             $pid !== null && $pid === $assessment->assessor_id => route('assessor.assessments.show', $assessment->id),
-            $user->can('assessments.approve') => route('review.show', $assessment->id),
+            $assessment->isStructuralReview() && $user->can('assessments.review-structural')
+                && $user->can('view', $assessment) => route('assessor.reviews.show', $assessment->id),
+            $user->can('assessments.approve') || $user->can('reports.view') => route('review.show', $assessment->id),
             $pid !== null && $pid === $assessment->assessee_id && $user->isAssessor() => route('assessor.results.show', $assessment->id),
             $pid !== null && $pid === $assessment->assessee_id => route('member.results.show', $assessment->id),
             default => route('notifications.index'),

@@ -34,8 +34,8 @@ enum NoteType: string
     {
         return match ($this) {
             self::Positive => 'success',
-            self::Negative => 'warning',
-            self::Violation => 'danger',
+            self::Negative => 'danger',
+            self::Violation => 'dark',
         };
     }
 
