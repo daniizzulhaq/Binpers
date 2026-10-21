@@ -53,12 +53,8 @@
             <div class="sidebar-section">Penilaian</div>
 
             <a href="{{ route('assessor.assessments.index') }}"
-               class="sidebar-link {{ $on('assessor.assessments.index', 'assessor.assessments.form', 'assessor.assessments.save') }}">
+               class="sidebar-link {{ $on('assessor.assessments.index', 'assessor.assessments.form', 'assessor.assessments.save', ...(auth()->user()->hasRole('hrd') ? [] : ['notes.create'])) }}">
                 <i class="bi bi-pencil-square"></i> Menilai Anggota
-            </a>
-
-            <a href="{{ route('notes.create') }}" class="sidebar-link {{ $on('notes.create') }}">
-                <i class="bi bi-plus-circle"></i> Penilaian Harian
             </a>
 
             <a href="{{ route('assessor.assessments.history') }}"
