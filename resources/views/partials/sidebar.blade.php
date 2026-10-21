@@ -43,9 +43,12 @@
                     <i class="bi bi-calendar-check"></i> Rekap Bulanan
                 </a>
 
-                <a href="{{ route('notes.index') }}" class="sidebar-link {{ $on('notes.index', 'notes.edit') }}">
-                    <i class="bi bi-journal-text"></i> Catatan Kinerja
-                </a>
+                {{-- HRD tetap perlu: kelola catatan & riwayat pelanggaran. Pimpinan lain lewat Menilai Anggota. --}}
+                @role('hrd')
+                    <a href="{{ route('notes.index') }}" class="sidebar-link {{ $on('notes.index', 'notes.edit') }}">
+                        <i class="bi bi-journal-text"></i> Catatan Kinerja
+                    </a>
+                @endrole
             @endcan
         @endcanany
 
@@ -53,7 +56,7 @@
             <div class="sidebar-section">Penilaian</div>
 
             <a href="{{ route('assessor.assessments.index') }}"
-               class="sidebar-link {{ $on('assessor.assessments.index', 'assessor.assessments.form', 'assessor.assessments.save', ...(auth()->user()->hasRole('hrd') ? [] : ['notes.create'])) }}">
+               class="sidebar-link {{ $on('assessor.assessments.index', 'assessor.assessments.form', 'assessor.assessments.save', ...(auth()->user()->hasRole('hrd') ? [] : ['notes.index', 'notes.create', 'notes.edit'])) }}">
                 <i class="bi bi-pencil-square"></i> Menilai Anggota
             </a>
 
