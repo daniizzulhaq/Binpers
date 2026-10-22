@@ -2,6 +2,7 @@
 
 namespace Database\Seeders;
 
+use App\Enums\RoleName;
 use App\Models\AssessmentRule;
 use App\Models\Position;
 use Illuminate\Database\Seeder;
@@ -13,7 +14,11 @@ class AssessmentRuleSeeder extends Seeder
     {
         $kanitProvost = Position::firstOrCreate(['name' => 'Kanit Provost'], ['is_active' => true]);
 
-        $leaderTargets = ['wakapolres', 'kabag', 'kasat', 'kasi_pengawas', 'kasi', 'kapolsek', 'kanit', 'anggota'];
+        // Kanit, Kapolpos, Pamapta / Kasubbag, Kasubsi, Kaur, Paur, Kasubnit, anggota.
+        $heads = RoleName::unitHeads();
+        $members = RoleName::members();
+
+        $leaderTargets = ['wakapolres', 'kabag', 'kasat', 'kasi_pengawas', 'kasi', 'kapolsek', ...$heads, ...$members];
 
         // [role penilai, cakupan, role yang dinilai, wajib?, jabatan dikecualikan, keterangan]
         $rules = [
@@ -21,21 +26,23 @@ class AssessmentRuleSeeder extends Seeder
             ['wakapolres', 'polres', $leaderTargets, false, null, 'Dapat menilai Wakapolres, Kabag, Kasat, Kasi, Kapolsek, Kanit, dan anggota.'],
 
             ['kabag', 'unit', ['*'], true, null, 'Wajib menilai personel di bagiannya.'],
-            ['kabag', 'polres', ['kasat', 'kasi_pengawas', 'kasi', 'kapolsek', 'kanit', 'anggota'], false, null, 'Dapat menilai Kasat, Kasi, Kapolsek, Kanit, dan anggota di luar bagiannya.'],
+            ['kabag', 'polres', ['kasat', 'kasi_pengawas', 'kasi', 'kapolsek', ...$heads, ...$members], false, null, 'Dapat menilai Kasat, Kasi, Kapolsek, Kanit, dan anggota di luar bagiannya.'],
 
             ['kasat', 'unit', ['*'], true, null, 'Wajib menilai personel di satuannya.'],
-            ['kasat', 'polres', ['kapolsek', 'kanit', 'anggota'], false, null, 'Dapat menilai Kapolsek, Kanit, dan anggota di luar satuannya.'],
+            ['kasat', 'polres', ['kapolsek', ...$heads, ...$members], false, null, 'Dapat menilai Kapolsek, Kanit, dan anggota di luar satuannya.'],
 
             ['kasi_pengawas', 'unit', ['*'], true, null, 'Wajib menilai personel di seksinya.'],
-            ['kasi_pengawas', 'polres', ['kabag', 'kasat', 'kasi_pengawas', 'kasi', 'kapolsek', 'kanit', 'anggota'], false, null, 'Dapat menilai Kabag, Kasat, Kasi, Kapolsek, Kanit, dan anggota di luar seksinya.'],
+            ['kasi_pengawas', 'polres', ['kabag', 'kasat', 'kasi_pengawas', 'kasi', 'kapolsek', ...$heads, ...$members], false, null, 'Dapat menilai Kabag, Kasat, Kasi, Kapolsek, Kanit, dan anggota di luar seksinya.'],
 
             ['kasi', 'unit', ['*'], true, null, 'Wajib menilai personel di seksinya.'],
-            ['kasi', 'polres', ['anggota'], false, null, 'Dapat menilai anggota lain.'],
+            ['kasi', 'polres', $members, false, null, 'Dapat menilai anggota lain.'],
 
-            ['kapolsek', 'unit', ['kanit', 'anggota'], true, [$kanitProvost->id], 'Wajib menilai Kasium, Ka SPKT, para Kanit (kecuali Kanit Provost), dan anggota polsek.'],
-            ['wakapolsek', 'unit', ['kanit', 'anggota'], true, null, 'Wajib menilai Kasium, Ka SPKT, seluruh Kanit, dan seluruh anggota polsek.'],
+            ['kapolsek', 'unit', [...$heads, ...$members], true, [$kanitProvost->id], 'Wajib menilai Kasium, Ka SPKT, para Kanit (kecuali Kanit Provost), dan anggota polsek.'],
+            ['wakapolsek', 'unit', [...$heads, ...$members], true, null, 'Wajib menilai Kasium, Ka SPKT, seluruh Kanit, dan seluruh anggota polsek.'],
 
-            ['kanit', 'unit', ['anggota'], true, null, 'Wajib menilai anggota di unitnya.'],
+            ['kanit', 'unit', $members, true, null, 'Wajib menilai anggota di unitnya.'],
+            ['kapolpos', 'unit', $members, true, null, 'Wajib menilai anggota di polposnya.'],
+            ['pamapta', 'unit', $members, true, null, 'Wajib menilai anggota SPKT regunya.'],
         ];
 
         DB::transaction(function () use ($rules) {

@@ -12,13 +12,8 @@ class DatabaseSeeder extends Seeder
             RoleAndPermissionSeeder::class,
             UserSeeder::class,
             AssessmentRuleSeeder::class,
+            PersonelPolresSeeder::class,
+            PeriodSeeder::class,
         ]);
-
-        if (app()->environment('local', 'testing')) {
-            $this->call([
-                DemoDataSeeder::class,
-                StructureDemoSeeder::class,
-            ]);
-        }
     }
 }

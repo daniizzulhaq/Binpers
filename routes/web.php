@@ -206,7 +206,7 @@ Route::middleware('permission:periods.manage')->group(function () {
         });
 
     // ---------------- Anggota ----------------
-    Route::middleware('role:'.RoleName::Anggota->value)
+    Route::middleware('role:'.implode('|', RoleName::members()))
         ->prefix('anggota')->name('member.')
         ->group(function () {
             Route::get('/beranda', [DashboardController::class, 'member'])->name('home');

@@ -48,7 +48,7 @@ class User extends Authenticatable
             $this->hasRole(RoleName::Hrd->value) => 'hrd.dashboard',
             $this->hasAnyRole(RoleName::leaders()) => 'leader.dashboard',
             $this->hasAnyRole(RoleName::assessors()) => 'assessor.home',
-            $this->hasRole(RoleName::Anggota->value) => 'member.home',
+            $this->hasAnyRole(RoleName::members()) => 'member.home',
             default => null,
         };
     }

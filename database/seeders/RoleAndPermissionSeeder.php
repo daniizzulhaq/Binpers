@@ -58,8 +58,13 @@ class RoleAndPermissionSeeder extends Seeder
             RoleName::Kapolsek->value => $structuralHead,
             RoleName::Wakapolsek->value => $assessor,
             RoleName::Kanit->value => $assessor,
-            RoleName::Anggota->value => ['assessments.view-own'],
+            RoleName::Kapolpos->value => $assessor,
+            RoleName::Pamapta->value => $assessor,
         ];
+
+        foreach (RoleName::members() as $member) {
+            $map[$member] = ['assessments.view-own'];
+        }
 
         foreach ($map as $roleName => $rolePermissions) {
             $role = Role::firstOrCreate(['name' => $roleName, 'guard_name' => 'web']);

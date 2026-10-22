@@ -61,7 +61,7 @@ class ReviewRoutingService
             return ['review_level' => Assessment::REVIEW_KAPOLRES, 'reviewer_unit_id' => null];
         }
 
-        if (! $user || ! $user->hasRole(RoleName::Kanit->value)) {
+        if (! $user || ! $user->hasAnyRole(RoleName::unitHeads())) {
             return $leadership;
         }
 

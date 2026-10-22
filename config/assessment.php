@@ -94,5 +94,11 @@ return [
         'Irjen Pol',
         'Komjen Pol',
         'Jenderal Pol',
+        // PNS Polri
+        'Juru',
+        'Pengatur',
+        'Pengatur Tk. I',
+        'Pengda Tk. I',
+        'Penda',
     ],
 ];
