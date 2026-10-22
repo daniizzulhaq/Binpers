@@ -93,7 +93,11 @@
                             {{ $cur?->position?->name ?? '-' }} · {{ $cur?->unit?->name ?? '-' }}
                         </div>
 
-                        @php $sum = $summary->get($p->id); @endphp
+                        @php
+                            $sum = $summary->get($p->id);
+                            // Tampilan mobile (Kanit, Kasi, dst.): nilai hanya terlihat untuk bawahan langsung.
+                            $showScore = $d || $isWajib;
+                        @endphp
 
                         <div class="d-flex flex-wrap align-items-center gap-2 mt-2">
                             @if ($a)
@@ -104,8 +108,10 @@
 
                             @if ($sum)
                                 <span class="small text-muted">
-                                    {{ $sum['count'] }} penilaian bulan ini ·
-                                    nilai <strong class="text-body">{{ rtrim(rtrim(number_format($sum['final'], 2, ',', '.'), '0'), ',') }}</strong>
+                                    {{ $sum['count'] }} penilaian bulan ini
+                                    @if ($showScore)
+                                        · nilai <strong class="text-body">{{ rtrim(rtrim(number_format($sum['final'], 2, ',', '.'), '0'), ',') }}</strong>
+                                    @endif
                                 </span>
                                 @if ($sum['pending'])
                                     <span class="badge text-bg-warning">{{ $sum['pending'] }} menunggu persetujuan</span>

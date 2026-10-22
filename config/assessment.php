@@ -5,13 +5,13 @@ return [
     // Total bobot kriteria yang disyaratkan agar periode bisa dibuka.
     'weight_total' => 100,
 
-    // Contoh ambang predikat.
-    // Dapat diubah sesuai kebijakan; bukan ketentuan resmi Polri.
+    // Ambang predikat nilai akhir: 85–100 Sangat Baik, 70–<85 Baik,
+    // 60–<70 Cukup, 0–<60 Perlu Pembinaan.
     'grades' => [
-        ['min' => 90, 'label' => 'Sangat Baik'],
-        ['min' => 75, 'label' => 'Baik'],
+        ['min' => 85, 'label' => 'Sangat Baik'],
+        ['min' => 70, 'label' => 'Baik'],
         ['min' => 60, 'label' => 'Cukup'],
-        ['min' => 0, 'label' => 'Kurang'],
+        ['min' => 0, 'label' => 'Perlu Pembinaan'],
     ],
 
     // Penilaian harian: nilai awal setiap kriteria (skala 0–100) sebelum ditambah
@@ -60,7 +60,7 @@ return [
             'Sangat Baik' => 50,
             'Baik' => 30,
             'Cukup' => 10,
-            'Kurang' => 0,
+            'Perlu Pembinaan' => 0,
         ],
     ],
 
