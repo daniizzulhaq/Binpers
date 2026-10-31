@@ -123,7 +123,7 @@
             <form method="POST" action="{{ route('assessor.assessments.submit', $a) }}">
                 @csrf
                 <button class="btn btn-primary"
-                        onclick="return confirm(@js(auth()->user()->hasRole('kapolres') ? 'Kirim rekap ini? Rekap Kapolres langsung final dan tidak dapat direvisi.' : 'Kirim rekap untuk disetujui?'))">
+                        onclick="return confirm(@js(auth()->user()->hasAnyRole(\App\Enums\RoleName::selfApproving()) ? 'Kirim rekap ini? Rekap Anda langsung final dan tidak dapat direvisi.' : 'Kirim rekap untuk disetujui?'))">
                     <i class="bi bi-send me-1"></i>Kirim Rekap
                 </button>
             </form>

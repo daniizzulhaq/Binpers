@@ -14,8 +14,8 @@ use Illuminate\Validation\ValidationException;
 
 /**
  * Persetujuan penilaian harian oleh atasan, dengan rute yang sama seperti rekap:
- * Kanit/Kasubag → Kabag/Kasat/Kasi, Kanit Polsek → Kapolsek, lainnya → pimpinan,
- * Wakapolres → Kapolres, Kapolres langsung disetujui.
+ * Kanit/Kasubag → Kabag/Kasat/Kasi, Kanit Polsek → Kapolsek, lainnya → pimpinan.
+ * Penilaian Kapolres, Wakapolres, dan Kapolsek langsung disetujui.
  */
 class NoteReviewService
 {
@@ -32,7 +32,7 @@ class NoteReviewService
             && ! $note->authorUser?->hasRole(RoleName::Hrd->value);
     }
 
-    /** Kirim (atau kirim ulang setelah diubah) ke atasan; penilaian Kapolres langsung disetujui. */
+    /** Kirim (atau kirim ulang setelah diubah) ke atasan; penilaian Kapolres/Wakapolres/Kapolsek langsung disetujui. */
     public function submit(PerformanceNote $note): void
     {
         if (! $this->needsReview($note)) {

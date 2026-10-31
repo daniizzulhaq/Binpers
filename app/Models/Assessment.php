@@ -17,9 +17,9 @@ class Assessment extends Model
     /** Tujuan persetujuan: atasan struktural penilai, atau pimpinan (Kapolres/Wakapolres/HRD). */
     public const REVIEW_STRUCTURAL = 'structural';
     public const REVIEW_LEADERSHIP = 'leadership';
-    /** Penilaian oleh Wakapolres: hanya Kapolres yang menyetujui. */
+    /** Data lama penilaian Wakapolres: hanya Kapolres yang menyetujui. */
     public const REVIEW_KAPOLRES = 'kapolres';
-    /** Penilaian oleh Kapolres: langsung final saat dikirim (tidak ada atasan di sistem). */
+    /** Penilaian oleh Kapolres/Wakapolres/Kapolsek: langsung final saat dikirim. */
     public const REVIEW_SELF = 'self';
 
     /**

@@ -17,6 +17,7 @@ use Illuminate\Support\Collection;
 /**
  * Menentukan siapa yang menyetujui sebuah penilaian.
  *
+ * - Kapolres, Wakapolres, Kapolsek → langsung disetujui (tanpa persetujuan atasan).
  * - Kanit/Kasubag di Polres → kepala bagian/satuan/seksi induk terdekat.
  * - Kanit/Kasium/Ka SPKT di Polsek → Kapolsek.
  * - Penilai lain, atau bila penyetuju struktural tidak ada → pimpinan (Kapolres/Wakapolres/HRD).
@@ -51,14 +52,9 @@ class ReviewRoutingService
         $assessor?->loadMissing(['user', 'currentAssignment.unit']);
         $user = $assessor?->user;
 
-        // Kapolres pimpinan tertinggi di sistem: penilaiannya langsung final.
-        if ($user?->hasRole(RoleName::Kapolres->value)) {
+        // Kapolres, Wakapolres, dan Kapolsek: penilaiannya (harian maupun rekap) langsung disetujui.
+        if ($user?->hasAnyRole(RoleName::selfApproving())) {
             return ['review_level' => Assessment::REVIEW_SELF, 'reviewer_unit_id' => null];
-        }
-
-        // Wakapolres: hanya Kapolres (bukan sesama Wakapolres atau yang dinilai).
-        if ($user?->hasRole(RoleName::Wakapolres->value)) {
-            return ['review_level' => Assessment::REVIEW_KAPOLRES, 'reviewer_unit_id' => null];
         }
 
         if (! $user || ! $user->hasAnyRole(RoleName::unitHeads())) {
@@ -191,7 +187,7 @@ class ReviewRoutingService
     {
         return match (true) {
             $assessment->isStructuralReview() => $assessment->reviewerUnit?->name ?? 'Atasan struktural',
-            $assessment->review_level === Assessment::REVIEW_SELF => 'Langsung final (penilaian Kapolres)',
+            $assessment->review_level === Assessment::REVIEW_SELF => 'Langsung disetujui (Kapolres / Wakapolres / Kapolsek)',
             $assessment->review_level === Assessment::REVIEW_KAPOLRES => 'Kapolres',
             default => 'Pimpinan (Kapolres / Wakapolres)',
         };

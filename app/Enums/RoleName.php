@@ -53,6 +53,12 @@ enum RoleName: string
         return [self::Kapolres->value, self::Wakapolres->value];
     }
 
+    /** Penilaiannya (harian maupun rekap) langsung disetujui tanpa persetujuan atasan. @return string[] */
+    public static function selfApproving(): array
+    {
+        return [self::Kapolres->value, self::Wakapolres->value, self::Kapolsek->value];
+    }
+
     /** Penilai struktural: memakai layout mobile. @return string[] */
     public static function assessors(): array
     {
