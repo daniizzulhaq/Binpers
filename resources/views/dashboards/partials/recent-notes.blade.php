@@ -64,7 +64,7 @@
                             <td>
                                 <div class="fw-semibold">{{ $n->title }}</div>
                                 <div class="small text-muted">
-                                    {{ \Illuminate\Support\Str::limit($n->note, 90) }}
+                                    {{ \Illuminate\Support\Str::limit($n->verdict ? 'Putusan: '.$n->verdict : $n->note, 90) }}
                                 </div>
 
                                 @if ($n->image_path)

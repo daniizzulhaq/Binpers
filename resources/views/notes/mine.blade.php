@@ -88,7 +88,11 @@
 
                 <div class="fw-semibold text-break">{{ $n->title }}</div>
 
-                <p class="mb-2 mt-1 text-break">{!! nl2br(e($n->note)) !!}</p>
+                @include('notes._violation', ['note' => $n])
+
+                @if ($n->note)
+                    <p class="mb-2 mt-1 text-break">{!! nl2br(e($n->note)) !!}</p>
+                @endif
 
                 @include('notes._image', ['note' => $n])
 

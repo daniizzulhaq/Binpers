@@ -51,7 +51,7 @@
                     <i class="bi bi-calendar-check"></i> Rekap Nilai
                 </a>
 
-                {{-- HRD tetap perlu: kelola catatan & riwayat pelanggaran. Pimpinan lain lewat Menilai Anggota. --}}
+                {{-- HRD tetap perlu: kelola catatan & riwayat pelanggaran. Pimpinan lain lewat Rekap Penilaian. --}}
                 @role('hrd')
                     <a href="{{ route('notes.index') }}" class="sidebar-link {{ $on('notes.index', 'notes.edit') }}">
                         <i class="bi bi-journal-text"></i> Catatan Kinerja
@@ -65,7 +65,7 @@
 
             <a href="{{ route('assessor.assessments.index') }}"
                class="sidebar-link {{ $on('assessor.assessments.index', 'assessor.assessments.form', 'assessor.assessments.save', ...(auth()->user()->hasRole('hrd') ? [] : ['notes.index', 'notes.create', 'notes.edit'])) }}">
-                <i class="bi bi-pencil-square"></i> Menilai Anggota
+                <i class="bi bi-pencil-square"></i> Rekap Penilaian
             </a>
 
             <a href="{{ route('assessor.assessments.history') }}"

@@ -1,7 +1,7 @@
 @extends(auth()->user()->layout())
 
-@section('title', 'Menilai Anggota')
-@section('page-title', 'Menilai Anggota')
+@section('title', 'Rekap Penilaian')
+@section('page-title', 'Rekap Penilaian')
 
 @section('content')
     @php

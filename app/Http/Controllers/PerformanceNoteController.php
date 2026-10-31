@@ -14,7 +14,6 @@ use App\Services\AssessmentService;
 use App\Services\NoteReviewService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\View\View;
@@ -96,7 +95,7 @@ class PerformanceNoteController extends Controller
     public function store(PerformanceNoteRequest $request): RedirectResponse
     {
         $user = $request->user();
-        $data = $request->validated();
+        $data = $request->noteData();
         $type = NoteType::from($data['type']);
         $level = $type->hasPoints() && ! empty($data['level']) ? NoteLevel::from($data['level']) : null;
 
@@ -141,6 +140,9 @@ class PerformanceNoteController extends Controller
                 'note' => $data['note'],
                 'image_path' => $imagePath,
                 'incident_date' => $data['incident_date'],
+                'violation_category' => $data['violation_category'],
+                'verdict' => $data['verdict'],
+                'verdict_date' => $data['verdict_date'],
             ]);
         } catch (Throwable $e) {
             if ($imagePath) {
@@ -180,7 +182,7 @@ class PerformanceNoteController extends Controller
     {
         Gate::authorize('update', $note);
 
-        $attributes = Arr::except($request->validated(), ['image', 'remove_image']);
+        $attributes = $request->noteData();
 
         $type = NoteType::from($attributes['type']);
         $level = $type->hasPoints() && ! empty($attributes['level']) ? NoteLevel::from($attributes['level']) : null;

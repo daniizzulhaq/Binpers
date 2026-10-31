@@ -180,7 +180,11 @@
                     @endif
                 </div>
 
-                <p class="mb-2 mt-2 text-break">{!! nl2br(e($n->note)) !!}</p>
+                @include('notes._violation', ['note' => $n])
+
+                @if ($n->note)
+                    <p class="mb-2 mt-2 text-break">{!! nl2br(e($n->note)) !!}</p>
+                @endif
 
                 @include('notes._image', ['note' => $n])
 

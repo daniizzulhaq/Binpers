@@ -6,7 +6,7 @@
 @section('content')
     <div class="row g-2 mb-3">
         <div class="col-6 col-md-3">
-            <a href="{{ route('assessor.assessments.index') }}" class="btn btn-primary w-100"><i class="bi bi-pencil-square me-1"></i>Menilai Anggota</a>
+            <a href="{{ route('assessor.assessments.index') }}" class="btn btn-primary w-100"><i class="bi bi-pencil-square me-1"></i>Rekap Penilaian</a>
         </div>
         <div class="col-6 col-md-3">
             <a href="{{ route('review.index') }}" class="btn btn-outline-primary w-100"><i class="bi bi-clipboard-check me-1"></i>Pemeriksaan</a>

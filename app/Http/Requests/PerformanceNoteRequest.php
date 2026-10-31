@@ -5,10 +5,12 @@ namespace App\Http\Requests;
 use App\Enums\NoteLevel;
 use App\Enums\NoteType;
 use App\Enums\RoleName;
+use App\Enums\ViolationCategory;
 use App\Models\AssessmentCriterion;
 use App\Models\AssessmentPeriod;
 use App\Services\DailyScoreService;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Support\Arr;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\Validator;
 
@@ -27,6 +29,7 @@ class PerformanceNoteRequest extends FormRequest
         $needsLevel = in_array($this->input('type'), [NoteType::Positive->value, NoteType::Negative->value], true);
         // Penilai wajib memilih kriteria; HRD boleh mengosongkan (dihitung "Umum").
         $needsCriterion = $needsLevel && ! $this->isHrd();
+        $isViolation = $this->input('type') === NoteType::Violation->value;
 
         return [
             'subject_id' => $isCreate ? ['required', 'integer', 'exists:personnel,id'] : ['prohibited'],
@@ -34,9 +37,13 @@ class PerformanceNoteRequest extends FormRequest
             // Tingkat wajib untuk Apresiasi dan Teguran.
             'level' => [$needsLevel ? 'required' : 'nullable', Rule::enum(NoteLevel::class)],
             'assessment_criterion_id' => [$needsCriterion ? 'required' : 'nullable', 'integer', 'exists:assessment_criteria,id'],
+            // Riwayat Pelanggaran: bentuk pelanggaran disimpan sebagai judul, uraian opsional.
             'title' => ['required', 'string', 'max:150'],
-            'note' => ['required', 'string', 'min:10', 'max:2000'],
+            'note' => [$isViolation ? 'nullable' : 'required', 'string', 'min:10', 'max:2000'],
             'incident_date' => ['required', 'date', 'before_or_equal:today'],
+            'violation_category' => [$isViolation ? 'required' : 'nullable', Rule::enum(ViolationCategory::class)],
+            'verdict' => [$isViolation ? 'required' : 'nullable', 'string', 'max:2000'],
+            'verdict_date' => [$isViolation ? 'required' : 'nullable', 'date', 'before_or_equal:today', 'after_or_equal:incident_date'],
 
             // Foto opsional.
             'image' => ['nullable', 'file', 'mimes:jpg,jpeg,png,webp', 'max:'.config('assessment.note_image_max_kb', 4096)],
@@ -96,6 +103,21 @@ class PerformanceNoteRequest extends FormRequest
         }];
     }
 
+    /** Data catatan yang disimpan; kolom pelanggaran dikosongkan untuk Apresiasi/Teguran. */
+    public function noteData(): array
+    {
+        $data = Arr::except($this->validated(), ['image', 'remove_image']);
+        $isViolation = $data['type'] === NoteType::Violation->value;
+
+        foreach (['violation_category', 'verdict', 'verdict_date'] as $field) {
+            $data[$field] = $isViolation ? ($data[$field] ?? null) : null;
+        }
+
+        $data['note'] = $data['note'] ?? '';
+
+        return $data;
+    }
+
     private function isHrd(): bool
     {
         return $this->user()->hasRole(RoleName::Hrd->value);
@@ -108,10 +130,13 @@ class PerformanceNoteRequest extends FormRequest
             'type' => 'jenis catatan',
             'level' => 'tingkat',
             'assessment_criterion_id' => 'kriteria',
-            'title' => 'judul',
+            'title' => $this->input('type') === NoteType::Violation->value ? 'bentuk pelanggaran' : 'judul',
             'note' => 'uraian',
             'incident_date' => 'tanggal kejadian',
             'image' => 'foto',
+            'violation_category' => 'klasifikasi pelanggaran',
+            'verdict' => 'putusan sidang',
+            'verdict_date' => 'tanggal putusan',
         ];
     }
 }

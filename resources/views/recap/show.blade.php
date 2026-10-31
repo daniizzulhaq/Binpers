@@ -159,7 +159,7 @@
                                 <div class="fw-semibold small">{{ $n->authorName() }}</div>
                                 <div class="small text-muted">{{ $n->authorPosition() ?? '-' }}</div>
                             </td>
-                            <td class="small">{{ $n->type === \App\Enums\NoteType::Violation ? '–' : $n->criterionName() }}</td>
+                            <td class="small">{{ $n->type === \App\Enums\NoteType::Violation ? ($n->violation_category?->label() ?? '–') : $n->criterionName() }}</td>
                             <td>
                                 <span class="badge text-bg-{{ $n->type->color() }}">{{ $n->type->shortLabel() }}</span>
                                 @if ($n->levelLabel()) <div class="small text-muted">{{ $n->levelLabel() }}</div> @endif
@@ -172,6 +172,7 @@
                             </td>
                             <td class="small text-break" style="min-width:16rem;">
                                 <div class="fw-semibold">{{ $n->title }}</div>
+                                @include('notes._violation', ['note' => $n])
                                 @if ($n->note) <div class="text-muted">{{ $n->note }}</div> @endif
                                 @if ($n->image_path)
                                     <a href="{{ route('notes.image', $n) }}" target="_blank" class="text-decoration-none">

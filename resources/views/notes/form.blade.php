@@ -187,6 +187,34 @@
                     @endif
                 </div>
 
+                {{-- Klasifikasi pelanggaran (khusus Riwayat Pelanggaran, HRD) --}}
+                @if (in_array(\App\Enums\NoteType::Violation, $types, true))
+                    @php
+                        $chosenCategory = old('violation_category', $note?->violation_category?->value);
+                    @endphp
+
+                    <div class="mb-3 violation-only">
+                        <label class="form-label d-block">Klasifikasi pelanggaran</label>
+
+                        <div class="row g-2">
+                            @foreach (\App\Enums\ViolationCategory::cases() as $vc)
+                                <div class="col-6">
+                                    <input type="radio" class="btn-check" name="violation_category"
+                                           id="violation-{{ $vc->value }}" value="{{ $vc->value }}"
+                                           @checked($chosenCategory === $vc->value)>
+                                    <label class="btn btn-outline-dark w-100 py-2 px-1" for="violation-{{ $vc->value }}">
+                                        {{ $vc->label() }}
+                                    </label>
+                                </div>
+                            @endforeach
+                        </div>
+
+                        @error('violation_category')
+                            <div class="invalid-feedback d-block">{{ $message }}</div>
+                        @enderror
+                    </div>
+                @endif
+
                 {{-- Tingkat (Apresiasi / Teguran) --}}
                 @php
                     $pointMap = \App\Models\NotePointSetting::map();
@@ -258,7 +286,10 @@
 
                 {{-- Judul --}}
                 <div class="mb-3">
-                    <label class="form-label" for="title">Judul singkat</label>
+                    <label class="form-label" for="title">
+                        <span class="violation-hide">Judul singkat</span>
+                        <span class="violation-only">Bentuk pelanggaran</span>
+                    </label>
 
                     <input type="text"
                            id="title"
@@ -267,6 +298,8 @@
                            required
                            value="{{ old('title', $note?->title) }}"
                            placeholder="Contoh: Membantu warga saat banjir"
+                           data-placeholder="Contoh: Membantu warga saat banjir"
+                           data-violation-placeholder="Contoh: Tidak masuk dinas tanpa keterangan"
                            class="form-control @error('title') is-invalid @enderror">
 
                     @error('title')
@@ -274,9 +307,45 @@
                     @enderror
                 </div>
 
+                {{-- Putusan sidang & tanggal putusan (khusus Riwayat Pelanggaran) --}}
+                @if (in_array(\App\Enums\NoteType::Violation, $types, true))
+                    <div class="mb-3 violation-only">
+                        <label class="form-label" for="verdict">Putusan sidang</label>
+
+                        <textarea id="verdict"
+                                  name="verdict"
+                                  rows="3"
+                                  maxlength="2000"
+                                  placeholder="Contoh: Teguran tertulis; penempatan dalam tempat khusus selama 7 hari."
+                                  class="form-control @error('verdict') is-invalid @enderror">{{ old('verdict', $note?->verdict) }}</textarea>
+
+                        @error('verdict')
+                            <div class="invalid-feedback">{{ $message }}</div>
+                        @enderror
+                    </div>
+
+                    <div class="mb-3 violation-only">
+                        <label class="form-label" for="verdict_date">Tanggal putusan</label>
+
+                        <input type="date"
+                               id="verdict_date"
+                               name="verdict_date"
+                               max="{{ now()->format('Y-m-d') }}"
+                               value="{{ old('verdict_date', $note?->verdict_date?->format('Y-m-d')) }}"
+                               class="form-control @error('verdict_date') is-invalid @enderror">
+
+                        @error('verdict_date')
+                            <div class="invalid-feedback">{{ $message }}</div>
+                        @enderror
+                    </div>
+                @endif
+
                 {{-- Uraian --}}
                 <div class="mb-3">
-                    <label class="form-label" for="note">Uraian</label>
+                    <label class="form-label" for="note">
+                        Uraian
+                        <span class="violation-only text-muted fw-normal">(opsional)</span>
+                    </label>
 
                     <textarea id="note"
                               name="note"
@@ -511,6 +580,24 @@
                         input.disabled = type === 'violation';
                     });
                 }
+
+                // Riwayat Pelanggaran: klasifikasi, putusan sidang, tanggal putusan wajib; uraian opsional.
+                const violation = type === 'violation';
+
+                document.querySelectorAll('.violation-only').forEach(function (el) {
+                    el.classList.toggle('d-none', !violation);
+                    el.querySelectorAll('input, textarea').forEach(function (input) {
+                        input.disabled = !violation;
+                        input.required = violation;
+                    });
+                });
+                document.querySelectorAll('.violation-hide').forEach(function (el) {
+                    el.classList.toggle('d-none', violation);
+                });
+
+                const title = document.getElementById('title');
+                title.placeholder = violation ? title.dataset.violationPlaceholder : title.dataset.placeholder;
+                document.getElementById('note').required = !violation;
             }
 
             document.querySelectorAll('input[name="type"]').forEach(function (radio) {

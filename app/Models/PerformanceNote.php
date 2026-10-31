@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Enums\NoteLevel;
 use App\Enums\NoteStatus;
 use App\Enums\NoteType;
+use App\Enums\ViolationCategory;
 use App\Models\Concerns\Auditable;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
@@ -17,6 +18,7 @@ class PerformanceNote extends Model
     protected $fillable = [
         'author_id', 'author_user_id', 'subject_id', 'unit_id', 'assessment_criterion_id',
         'type', 'level', 'points', 'title', 'note', 'image_path', 'incident_date',
+        'violation_category', 'verdict', 'verdict_date',
     ];
 
     /** Kolom persetujuan (status, review_*) hanya diubah lewat NoteReviewService. */
@@ -29,6 +31,8 @@ class PerformanceNote extends Model
             'level' => NoteLevel::class,
             'points' => 'integer',
             'incident_date' => 'date',
+            'violation_category' => ViolationCategory::class,
+            'verdict_date' => 'date',
             'status' => NoteStatus::class,
             'reviewed_at' => 'datetime',
         ];

@@ -89,7 +89,7 @@
         <div class="row g-2 mb-3">
             <div class="col-6">
                 <a href="{{ route('assessor.assessments.index') }}" class="bp-action bp-action-primary h-100">
-                    <x-icon name="clipboard-check" :size="26" /><span>Menilai Anggota</span>
+                    <x-icon name="clipboard-check" :size="26" /><span>Rekap Penilaian</span>
                 </a>
             </div>
             <div class="col-6">
