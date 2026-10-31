@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Enums\NoteStatus;
 use App\Enums\NoteType;
 use App\Enums\RoleName;
+use App\Enums\ViolationCategory;
 use App\Http\Requests\PerformanceNoteRequest;
 use App\Models\AssessmentPeriod;
 use App\Models\PerformanceNote;
@@ -42,6 +43,7 @@ class PerformanceNoteController extends Controller
         $base = PerformanceNote::query()
             ->when($mineOnly, fn ($q) => $q->where('author_user_id', $user->id))
             ->when(NoteType::tryFrom((string) $request->input('type')), fn ($q, $t) => $q->where('type', $t->value))
+            ->violationCategory(ViolationCategory::tryFrom((string) $request->input('category')))
             ->when(NoteStatus::tryFrom((string) $request->input('status')), fn ($q, $s) => $q->where('status', $s->value))
             ->when($request->date('from'), fn ($q, $d) => $q->whereDate('incident_date', '>=', $d))
             ->when($request->date('to'), fn ($q, $d) => $q->whereDate('incident_date', '<=', $d))
@@ -65,6 +67,7 @@ class PerformanceNoteController extends Controller
         return view('notes.index', [
             'notes' => $notes,
             'counts' => $counts,
+            'violationCounts' => PerformanceNote::violationCounts($base),
             'types' => NoteType::cases(),
             'writeTypes' => NoteType::allowedFor($user),
             'seeAll' => $seeAll,

@@ -46,6 +46,7 @@
                         Pelanggaran
                     </div>
                     <div class="fs-3 fw-bold text-dark lh-1 mt-1">{{ $violation }}</div>
+                    @include('notes._violation-counts', ['counts' => $violationCounts, 'route' => 'notes.mine'])
                 </div>
             </div>
         </div>
@@ -61,6 +62,10 @@
                     </option>
                 @endforeach
             </select>
+        </div>
+
+        <div class="{{ $d ? 'col-12 col-md-4 col-xl-3' : 'col-12 order-last' }}">
+            @include('notes._category-filter')
         </div>
 
         <div class="{{ $d ? 'col-4 col-md-2' : 'col-4' }}">

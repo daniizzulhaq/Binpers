@@ -82,6 +82,9 @@
                     <div class="fs-3 fw-bold text-dark lh-1 mt-1">
                         {{ $violation }}
                     </div>
+                    @if ($seeAll)
+                        @include('notes._violation-counts', ['counts' => $violationCounts, 'route' => 'notes.index'])
+                    @endif
                 </div>
             </div>
         </div>
@@ -113,6 +116,12 @@
                 @endforeach
             </select>
         </div>
+
+        @if ($seeAll)
+            <div class="{{ $d ? 'col-6 col-md-3 col-xl-2' : 'col-12' }}">
+                @include('notes._category-filter')
+            </div>
+        @endif
 
         <div class="{{ $d ? 'col-6 col-md-3 col-xl-2' : 'col-6' }}">
             <input type="date"

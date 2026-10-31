@@ -79,6 +79,25 @@ class PerformanceNote extends Model
         return $query->where($query->qualifyColumn('status'), NoteStatus::Approved->value);
     }
 
+    /** Filter klasifikasi pelanggaran (otomatis hanya Riwayat Pelanggaran). */
+    public function scopeViolationCategory(Builder $query, ?ViolationCategory $category): Builder
+    {
+        return $category
+            ? $query->where('type', NoteType::Violation->value)->where('violation_category', $category->value)
+            : $query;
+    }
+
+    /** Jumlah pelanggaran per klasifikasi dari query ini. */
+    public static function violationCounts(Builder $query): \Illuminate\Support\Collection
+    {
+        return (clone $query)->toBase()
+            ->where('type', NoteType::Violation->value)
+            ->whereNotNull('violation_category')
+            ->selectRaw('violation_category, COUNT(*) as total')
+            ->groupBy('violation_category')
+            ->pluck('total', 'violation_category');
+    }
+
     public function isStructuralReview(): bool
     {
         return $this->review_level === Assessment::REVIEW_STRUCTURAL && $this->reviewer_unit_id !== null;

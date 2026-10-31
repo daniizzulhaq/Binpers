@@ -112,6 +112,10 @@
                         <x-icon name="file-alert" :size="24" class="d-block mx-auto mb-1 text-dark" />
                         <div class="n text-dark">{{ $violation }}</div>
                         <div class="l">Pelanggaran</div>
+                        <div class="text-muted lh-sm mt-1" style="font-size:.7rem;">
+                            Disiplin {{ (int) ($home['violationCounts']['disiplin'] ?? 0) }}
+                            · Kode Etik {{ (int) ($home['violationCounts']['kode_etik'] ?? 0) }}
+                        </div>
                     </div>
                 </a>
             </div>

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Enums\NoteType;
+use App\Enums\ViolationCategory;
 use App\Models\PerformanceNote;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
@@ -18,10 +19,12 @@ class MyNoteController extends Controller
         // Hanya yang sudah disetujui atasan penilai.
         $base = PerformanceNote::approved()
             ->where('subject_id', $me->id)
-            ->when(NoteType::tryFrom((string) $request->input('type')), fn ($q, $t) => $q->where('type', $t->value));
+            ->when(NoteType::tryFrom((string) $request->input('type')), fn ($q, $t) => $q->where('type', $t->value))
+            ->violationCategory(ViolationCategory::tryFrom((string) $request->input('category')));
 
-        $counts = PerformanceNote::approved()->where('subject_id', $me->id)
-            ->toBase()
+        $all = PerformanceNote::approved()->where('subject_id', $me->id);
+
+        $counts = (clone $all)->toBase()
             ->selectRaw('type, COUNT(*) as total')
             ->groupBy('type')
             ->pluck('total', 'type');
@@ -34,6 +37,7 @@ class MyNoteController extends Controller
         return view('notes.mine', [
             'notes' => $notes,
             'counts' => $counts,
+            'violationCounts' => PerformanceNote::violationCounts($all),
             'types' => NoteType::cases(),
         ]);
     }

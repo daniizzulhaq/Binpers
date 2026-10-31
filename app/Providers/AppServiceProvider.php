@@ -127,12 +127,13 @@ class AppServiceProvider extends ServiceProvider
 
             $history = $periods->map(fn ($p) => ['period' => $p] + $scores->forPersonnel($p, $me));
 
-            $noteCounts = PerformanceNote::approved()->where('subject_id', $me->id)
+            $periodNotes = PerformanceNote::approved()->where('subject_id', $me->id)
                 ->when($current, fn ($q) => $q->whereBetween('incident_date', [
                     $current->start_date->toDateString(),
                     $current->end_date->toDateString(),
-                ]))
-                ->toBase()
+                ]));
+
+            $noteCounts = (clone $periodNotes)->toBase()
                 ->selectRaw('type, COUNT(*) as total')
                 ->groupBy('type')
                 ->pluck('total', 'type');
@@ -143,6 +144,7 @@ class AppServiceProvider extends ServiceProvider
                 'score' => $history->first(),
                 'history' => $history,
                 'noteCounts' => $noteCounts,
+                'violationCounts' => PerformanceNote::violationCounts($periodNotes),
                 'unread' => $user->unreadNotifications()->count(),
             ]);
         });
