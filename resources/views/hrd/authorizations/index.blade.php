@@ -18,7 +18,7 @@
                 <thead class="table-light"><tr><th>Penilai</th><th>Anggota dinilai</th><th>Masa berlaku</th><th>Status</th><th></th></tr></thead>
                 <tbody>
                     @forelse ($authorizations as $a)
-                        @php($cross = $a->assessor->currentAssignment?->organizational_unit_id !== $a->assessee->currentAssignment?->organizational_unit_id)
+                        @php($cross = $crossIds->has($a->id))
                         <tr>
                             <td>
                                 <div class="fw-semibold">{{ $a->assessor->user->name }}</div>

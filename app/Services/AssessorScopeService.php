@@ -57,9 +57,21 @@ class AssessorScopeService
         $rules = $this->rulesFor($assessor)
             ->when($mandatoryOnly, fn ($c) => $c->where('is_mandatory', true));
 
-        $manualIds = $mandatoryOnly
-            ? collect()
-            : AssessmentAuthorization::effective()->where('assessor_id', $assessor->id)->pluck('assessee_id');
+        $manualIds = AssessmentAuthorization::effective()->where('assessor_id', $assessor->id)->pluck('assessee_id');
+
+        // Kewenangan manual terhadap anggota yang masih berada di unit penilai (beserta sub-unitnya)
+        // diperlakukan sebagai bawahan, bukan lintas unit.
+        if ($mandatoryOnly && $manualIds->isNotEmpty()) {
+            $unitId = $assessor->currentAssignment?->organizational_unit_id;
+            $manualIds = $unitId
+                ? Personnel::whereIn('id', $manualIds)
+                    ->whereHas('currentAssignment', fn ($a) => $a->whereIn(
+                        'organizational_unit_id',
+                        $this->unitCache[$unitId] ??= OrganizationalUnit::descendantIdsOf($unitId)
+                    ))
+                    ->pluck('id')
+                : collect();
+        }
 
         return Personnel::query()
             ->whereKeyNot($assessor->id)

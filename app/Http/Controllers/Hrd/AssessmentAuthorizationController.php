@@ -30,7 +30,22 @@ class AssessmentAuthorizationController extends Controller
             })
             ->latest()->paginate(15)->withQueryString();
 
-        return view('hrd.authorizations.index', compact('authorizations'));
+        // "Lintas unit" hanya bila unit anggota berada di luar unit penilai beserta seluruh sub-unitnya.
+        $treeCache = [];
+        $crossIds = $authorizations->getCollection()->filter(function ($a) use (&$treeCache) {
+            $assessorUnit = $a->assessor->currentAssignment?->organizational_unit_id;
+            $assesseeUnit = $a->assessee->currentAssignment?->organizational_unit_id;
+
+            if (! $assessorUnit || ! $assesseeUnit) {
+                return $assessorUnit !== $assesseeUnit;
+            }
+
+            $tree = $treeCache[$assessorUnit] ??= array_map('intval', OrganizationalUnit::descendantIdsOf((int) $assessorUnit));
+
+            return ! in_array((int) $assesseeUnit, $tree, true);
+        })->pluck('id')->flip();
+
+        return view('hrd.authorizations.index', compact('authorizations', 'crossIds'));
     }
 
     public function create(): View
