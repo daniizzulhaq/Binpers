@@ -119,7 +119,7 @@
 
             @can('periods.manage')
                 <a href="{{ route('hrd.note-points.edit') }}" class="sidebar-link {{ $on('hrd.note-points.*') }}">
-                    <i class="bi bi-sliders"></i> Poin Catatan
+                    <i class="bi bi-sliders"></i> Poin &amp; Nilai
                 </a>
             @endcan
         @endcanany

@@ -8,6 +8,7 @@ use App\Enums\NoteType;
 use App\Models\Assessment;
 use App\Models\AssessmentCriterion;
 use App\Models\AssessmentPeriod;
+use App\Models\AssessmentSetting;
 use App\Models\PerformanceNote;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
@@ -15,7 +16,7 @@ use Illuminate\Support\Collection;
 /**
  * Nilai bulanan otomatis dari penilaian harian (Apresiasi/Teguran per kriteria).
  *
- * Setiap kriteria dimulai dari nilai dasar (config assessment.base_score, skala 0–100),
+ * Setiap kriteria dimulai dari nilai dasar (diatur HRD; bawaan config assessment.base_score, skala 0–100),
  * ditambah poin apresiasi dan dikurangi poin teguran pada kriteria itu, dibatasi 0–100.
  * Nilai akhir = rata-rata berbobot kriteria + poin catatan "Umum" (tanpa kriteria), dibatasi 0–100.
  */
@@ -27,7 +28,7 @@ class DailyScoreService
 
     public function baseScore(): float
     {
-        return (float) config('assessment.base_score', 75);
+        return AssessmentSetting::baseScore();
     }
 
     /** Penilaian harian seorang penilai atas anggota pada periode ini. */

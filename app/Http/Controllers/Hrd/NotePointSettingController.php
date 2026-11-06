@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Hrd;
 
 use App\Enums\NoteLevel;
 use App\Http\Controllers\Controller;
+use App\Models\AssessmentSetting;
 use App\Models\NotePointSetting;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -14,7 +15,14 @@ class NotePointSettingController extends Controller
 {
     public function edit(): View
     {
-        return view('hrd.note-points.edit', ['map' => NotePointSetting::map()]);
+        return view('hrd.note-points.edit', [
+            'map' => NotePointSetting::map(),
+            'grades' => collect(config('assessment.grades'))->map(fn ($g) => [
+                'label' => $g['label'],
+                'min' => collect(AssessmentSetting::grades())->firstWhere('label', $g['label'])['min'],
+            ])->all(),
+            'baseScore' => AssessmentSetting::baseScore(),
+        ]);
     }
 
     public function update(Request $request): RedirectResponse

@@ -6,17 +6,22 @@ use App\Enums\PeriodStatus;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\AssessmentPeriodRequest;
 use App\Models\AssessmentPeriod;
+use App\Services\PeriodResetService;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
 use Illuminate\View\View;
 
 class AssessmentPeriodController extends Controller
 {
-    public function index(): View
+    public function index(PeriodResetService $reset): View
     {
         $periods = AssessmentPeriod::withCount(['criteria', 'assessments'])
             ->orderByDesc('start_date')->paginate(15);
 
-        return view('hrd.periods.index', compact('periods'));
+        return view('hrd.periods.index', [
+            'periods' => $periods,
+            'resetCounts' => $reset->countsAll(),
+        ]);
     }
 
     public function create(): View
@@ -32,9 +37,9 @@ class AssessmentPeriodController extends Controller
             ->with('success', 'Periode dibuat. Lanjutkan dengan mengatur kriteria dan bobot.');
     }
 
-    public function show(AssessmentPeriod $period): View
+    public function show(AssessmentPeriod $period, PeriodResetService $reset): View
     {
-        $period->load('criteria')->loadCount('assessments');
+        $period->load(['criteria' => fn ($q) => $q->withCount('notes')])->loadCount('assessments');
 
         return view('hrd.periods.show', [
             'period' => $period,
@@ -42,6 +47,7 @@ class AssessmentPeriodController extends Controller
             'weightTarget' => config('assessment.weight_total'),
             'locked' => $period->isCriteriaLocked(),
             'otherPeriods' => AssessmentPeriod::whereKeyNot($period->id)->orderByDesc('start_date')->get(),
+            'resetCounts' => $reset->counts($period),
         ]);
     }
 
@@ -95,5 +101,37 @@ class AssessmentPeriodController extends Controller
         $period->update(['status' => PeriodStatus::Closed]);
 
         return back()->with('success', 'Periode ditutup.');
+    }
+
+    /** Reset seluruh penilaian di semua periode agar sistem kosong kembali. */
+    public function resetAll(Request $request, PeriodResetService $reset): RedirectResponse
+    {
+        $request->validate(
+            ['confirmation' => ['required', 'in:RESET SEMUA']],
+            ['confirmation.in' => 'Ketik RESET SEMUA (huruf kapital) untuk mengonfirmasi.'],
+        );
+
+        $c = $reset->resetAll();
+
+        return redirect()->route('hrd.periods.index')->with('success',
+            "Semua penilaian direset: {$c['assessments']} rekap penilaian, {$c['notes']} penilaian harian, "
+            ."{$c['points']} transaksi poin, dan {$c['monthly']} rekap bulanan dihapus. "
+            ."{$c['periods']} periode kembali ke Draft (kriteria tetap ada).");
+    }
+
+    /** Hapus seluruh penilaian periode ini agar kriteria & bobot dapat diubah kembali. */
+    public function reset(Request $request, AssessmentPeriod $period, PeriodResetService $reset): RedirectResponse
+    {
+        $request->validate(
+            ['confirmation' => ['required', 'in:RESET']],
+            ['confirmation.in' => 'Ketik RESET (huruf kapital) untuk mengonfirmasi.'],
+        );
+
+        $c = $reset->reset($period);
+
+        return redirect()->route('hrd.periods.show', $period)->with('success',
+            "Penilaian periode direset: {$c['assessments']} rekap penilaian, {$c['notes']} penilaian harian, "
+            ."{$c['points']} transaksi poin, dan {$c['monthly']} rekap bulanan dihapus. "
+            .'Periode kembali ke Draft; ubah kriteria/bobot lalu buka kembali.');
     }
 }

@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\AssessmentSetting;
 use Illuminate\Support\Collection;
 use InvalidArgumentException;
 
@@ -35,7 +36,7 @@ class ScoreCalculator
 
     public function gradeFor(float $score): string
     {
-        $grades = collect(config('assessment.grades'))->sortByDesc('min')->values();
+        $grades = collect(AssessmentSetting::grades());
 
         foreach ($grades as $grade) {
             if ($score >= $grade['min']) {

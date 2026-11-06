@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\AssessmentStatus;
 use App\Enums\PeriodStatus;
 use App\Models\Concerns\Auditable;
 use Illuminate\Database\Eloquent\Builder;
@@ -60,12 +61,24 @@ class AssessmentPeriod extends Model
         return (float) $this->criteria()->sum('weight');
     }
 
-    /** Kriteria tidak boleh diubah jika periode ditutup, sudah ada penilaian, atau sudah dipakai penilaian harian. */
+    /**
+     * Bobot, skala, tambah & hapus kriteria dikunci hanya bila rekap bulan sudah dikunci atau
+     * sudah ada rekap penilaian yang dikirim/disetujui/final (nilainya sudah tersimpan).
+     * Rekap Draft/Revisi aman karena dihitung ulang dari penilaian harian saat dikirim.
+     * Nama, deskripsi, dan urutan selalu boleh diubah.
+     */
     public function isCriteriaLocked(): bool
     {
-        return $this->status === PeriodStatus::Closed
-            || $this->assessments()->exists()
-            || PerformanceNote::whereIn('assessment_criterion_id', $this->criteria()->select('id'))->exists();
+        return $this->isRecapLocked() || $this->frozenAssessments()->exists();
+    }
+
+    /** Rekap penilaian yang nilainya sudah tersimpan (bukan Draft/Revisi). */
+    public function frozenAssessments(): HasMany
+    {
+        return $this->assessments()->whereNotIn('status', [
+            AssessmentStatus::Draft->value,
+            AssessmentStatus::Revision->value,
+        ]);
     }
 
     public function isRecapLocked(): bool

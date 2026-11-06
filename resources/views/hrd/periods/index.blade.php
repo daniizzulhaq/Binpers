@@ -4,8 +4,46 @@
 @section('page-title', 'Periode & Kriteria')
 
 @section('content')
-    <div class="d-flex justify-content-end mb-3">
+    @if ($errors->any())
+        <div class="alert alert-danger"><ul class="mb-0">@foreach ($errors->all() as $e)<li>{{ $e }}</li>@endforeach</ul></div>
+    @endif
+
+    <div class="d-flex justify-content-end gap-2 mb-3">
+        <button type="button" class="btn btn-outline-danger" data-bs-toggle="modal" data-bs-target="#resetAllModal">
+            <i class="bi bi-arrow-counterclockwise me-1"></i>Reset Semua Penilaian
+        </button>
         <a href="{{ route('hrd.periods.create') }}" class="btn btn-primary"><i class="bi bi-plus-lg me-1"></i>Buat Periode</a>
+    </div>
+
+    <div class="modal fade" id="resetAllModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog">
+            <form method="POST" action="{{ route('hrd.periods.reset-all') }}" class="modal-content"
+                  onsubmit="return confirm('Yakin menghapus SEMUA data penilaian? Tindakan ini tidak dapat dibatalkan.')">
+                @csrf
+                <div class="modal-header">
+                    <h2 class="modal-title h5 text-danger"><i class="bi bi-exclamation-octagon me-1"></i>Reset Semua Penilaian</h2>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Tutup"></button>
+                </div>
+                <div class="modal-body">
+                    <p class="small mb-2">Data berikut di <strong>semua periode</strong> akan dihapus permanen:</p>
+                    <ul class="small">
+                        <li>{{ $resetCounts['assessments'] }} rekap penilaian (beserta detail, bukti, riwayat persetujuan)</li>
+                        <li>{{ $resetCounts['notes'] }} penilaian harian (Apresiasi/Teguran) beserta fotonya</li>
+                        <li>{{ $resetCounts['points'] }} transaksi poin perolehan dari rekap</li>
+                        <li>{{ $resetCounts['monthly'] }} rekap bulanan terkunci</li>
+                        <li>Notifikasi terkait penilaian</li>
+                    </ul>
+                    <p class="small text-muted">Tetap ada: {{ $resetCounts['periods'] }} periode beserta kriteria &amp; bobotnya (semua kembali ke Draft),
+                        data personel, Riwayat Pelanggaran, penyesuaian poin manual, dan pemberian apresiasi.</p>
+                    <label class="form-label small" for="reset_all_confirmation">Ketik <code>RESET SEMUA</code> untuk konfirmasi</label>
+                    <input type="text" id="reset_all_confirmation" name="confirmation" class="form-control" autocomplete="off" required pattern="RESET SEMUA">
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-light" data-bs-dismiss="modal">Batal</button>
+                    <button class="btn btn-danger"><i class="bi bi-arrow-counterclockwise me-1"></i>Reset Semua</button>
+                </div>
+            </form>
+        </div>
     </div>
 
     <div class="card border-0 shadow-sm">

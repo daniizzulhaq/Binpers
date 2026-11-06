@@ -23,6 +23,7 @@ use App\Http\Controllers\ReportController;
 use App\Http\Controllers\ReviewController;
 use App\Http\Controllers\StructuralReviewController;
 use App\Http\Controllers\Hrd\NotePointSettingController;
+use App\Http\Controllers\Hrd\ScoringSettingController;
 use App\Http\Controllers\MonthlyRecapController;
 use App\Http\Controllers\NoteImageController;
 use App\Http\Controllers\NoteReviewController;
@@ -93,6 +94,7 @@ Route::middleware(['auth', 'active'])->group(function () {
 Route::middleware('permission:periods.manage')->group(function () {
                 Route::get('poin-catatan', [NotePointSettingController::class, 'edit'])->name('note-points.edit');
                 Route::put('poin-catatan', [NotePointSettingController::class, 'update'])->name('note-points.update');
+                Route::put('pengaturan-nilai', [ScoringSettingController::class, 'update'])->name('scoring.update');
             });
             Route::middleware('permission:users.manage')->group(function () {
                 Route::get('users', [UserController::class, 'index'])->name('users.index');
@@ -120,14 +122,18 @@ Route::middleware('permission:periods.manage')->group(function () {
             });
 
             Route::middleware('permission:periods.manage')->group(function () {
+                // Didaftarkan sebelum resource agar tidak tertangkap sebagai periods/{period}.
+                Route::post('periods/reset-semua', [AssessmentPeriodController::class, 'resetAll'])->name('periods.reset-all');
                 Route::resource('periods', AssessmentPeriodController::class);
                 Route::post('periods/{period}/open', [AssessmentPeriodController::class, 'open'])->name('periods.open');
                 Route::post('periods/{period}/close', [AssessmentPeriodController::class, 'close'])->name('periods.close');
+                Route::post('periods/{period}/reset', [AssessmentPeriodController::class, 'reset'])->name('periods.reset');
             });
 
             Route::middleware('permission:criteria.manage')->group(function () {
                 Route::post('periods/{period}/criteria', [AssessmentCriterionController::class, 'store'])->name('criteria.store');
                 Route::post('periods/{period}/criteria/copy', [AssessmentCriterionController::class, 'copy'])->name('criteria.copy');
+                Route::put('periods/{period}/criteria/weights', [AssessmentCriterionController::class, 'updateWeights'])->name('criteria.weights');
                 Route::put('criteria/{criterion}', [AssessmentCriterionController::class, 'update'])->name('criteria.update');
                 Route::delete('criteria/{criterion}', [AssessmentCriterionController::class, 'destroy'])->name('criteria.destroy');
             });
