@@ -66,6 +66,18 @@
                             @endif
                         </div>
                     @else
+                        @if ($subjects->count() > 5)
+                            <div class="input-group mb-2">
+                                <span class="input-group-text"><i class="bi bi-search"></i></span>
+                                <input type="search"
+                                       id="subjectSearch"
+                                       class="form-control"
+                                       autocomplete="off"
+                                       placeholder="Cari nama, NRP, atau satuan…">
+                            </div>
+                            <div id="subjectSearchInfo" class="form-text mt-0 mb-1 d-none"></div>
+                        @endif
+
                         <select name="subject_id"
                                 id="subject_id"
                                 required
@@ -513,6 +525,58 @@
                 preview.dataset.objectUrl = url;
                 preview.src = url;
                 preview.classList.remove('d-none');
+            });
+        })();
+    </script>
+
+    <script>
+        (function () {
+            // Pencarian anggota: menyaring pilihan dropdown berdasarkan nama/NRP/satuan.
+            const search = document.getElementById('subjectSearch');
+            const select = document.getElementById('subject_id');
+            const info = document.getElementById('subjectSearchInfo');
+
+            if (!search || !select) return;
+
+            const placeholder = select.options[0];
+            // Simpan semua opsi; opsi yang tidak cocok dilepas dari DOM
+            // (atribut hidden tidak dihormati di dropdown iOS).
+            const all = Array.from(select.options).slice(1);
+            const norm = function (s) { return s.toLowerCase().replace(/\s+/g, ' ').trim(); };
+
+            search.addEventListener('input', function () {
+                const q = norm(search.value);
+                const words = q ? q.split(' ') : [];
+                const current = select.value;
+
+                const matches = all.filter(function (opt) {
+                    const text = norm(opt.textContent);
+                    return words.every(function (w) { return text.includes(w); });
+                });
+
+                select.replaceChildren(placeholder, ...matches);
+
+                if (matches.some(function (o) { return o.value === current; })) {
+                    select.value = current;
+                } else if (matches.length === 1) {
+                    select.value = matches[0].value;
+                } else {
+                    select.value = '';
+                }
+
+                if (q) {
+                    info.textContent = matches.length
+                        ? matches.length + ' anggota ditemukan' + (matches.length === 1 ? ' dan otomatis dipilih.' : '. Pilih dari daftar di bawah.')
+                        : 'Tidak ada anggota yang cocok.';
+                    info.classList.remove('d-none');
+                } else {
+                    info.classList.add('d-none');
+                }
+            });
+
+            // Jangan kirim form saat menekan Enter di kolom pencarian.
+            search.addEventListener('keydown', function (e) {
+                if (e.key === 'Enter') e.preventDefault();
             });
         })();
     </script>
