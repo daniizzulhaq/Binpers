@@ -129,6 +129,8 @@ class MonthlyScoreService
                 $penalty += $r['penalty'];
             }
 
+            // Nilai rentang (triwulan/semester/tahunan) = rata-rata nilai bulanan yang sudah ada nilainya.
+            // 'sum' hanya keterangan: jumlah nilai bulanan sebelum dibagi.
             $scored = collect($months)->filter(fn ($t) => $t !== null);
             $total = $scored->isEmpty() ? null : round($scored->avg(), 2);
 
@@ -137,6 +139,7 @@ class MonthlyScoreService
                 'scored' => $scored->count(),
                 'bonus' => $bonus,
                 'penalty' => $penalty,
+                'sum' => $scored->isEmpty() ? null : round($scored->sum(), 2),
                 'total' => $total,
                 'grade' => $total === null ? null : $this->calculator->gradeFor($total),
             ]];

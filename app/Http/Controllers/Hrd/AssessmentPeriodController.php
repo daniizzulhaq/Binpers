@@ -5,10 +5,12 @@ namespace App\Http\Controllers\Hrd;
 use App\Enums\PeriodStatus;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\AssessmentPeriodRequest;
+use App\Models\AssessmentCriterion;
 use App\Models\AssessmentPeriod;
 use App\Services\PeriodResetService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\View\View;
 
 class AssessmentPeriodController extends Controller
@@ -24,17 +26,55 @@ class AssessmentPeriodController extends Controller
         ]);
     }
 
-    public function create(): View
+    public function create(Request $request): View
     {
-        return view('hrd.periods.form', ['period' => null]);
+        // Periode yang punya kriteria dapat dijadikan sumber salinan.
+        $sources = AssessmentPeriod::has('criteria')->orderByDesc('start_date')->get();
+
+        // Default: periode yang dipilih lewat tombol "Duplikat", atau periode terbaru.
+        $source = $sources->firstWhere('id', (int) $request->query('dari')) ?? $sources->first();
+
+        // Saran tanggal & nama: bulan berikutnya setelah periode terakhir.
+        $latest = AssessmentPeriod::orderByDesc('end_date')->first();
+        $start = $latest ? $latest->end_date->copy()->addDay() : today()->startOfMonth();
+        $end = $start->copy()->endOfMonth();
+
+        return view('hrd.periods.form', [
+            'period' => null,
+            'sources' => $sources,
+            'source' => $source,
+            'suggest' => [
+                'name' => $start->copy()->locale('id')->translatedFormat('F Y'),
+                'start_date' => $start->format('Y-m-d'),
+                'end_date' => $end->format('Y-m-d'),
+                'description' => $source?->description,
+            ],
+        ]);
     }
 
     public function store(AssessmentPeriodRequest $request): RedirectResponse
     {
-        $period = AssessmentPeriod::create($request->validated() + ['status' => PeriodStatus::Draft]);
+        $data = $request->validated();
+        $sourceId = $data['copy_from'] ?? null;
+        unset($data['copy_from']);
 
-        return redirect()->route('hrd.periods.show', $period)
-            ->with('success', 'Periode dibuat. Lanjutkan dengan mengatur kriteria dan bobot.');
+        $period = DB::transaction(function () use ($data, $sourceId) {
+            $period = AssessmentPeriod::create($data + ['status' => PeriodStatus::Draft]);
+
+            if ($sourceId) {
+                AssessmentCriterion::where('assessment_period_id', $sourceId)
+                    ->orderBy('sort_order')->get()
+                    ->each(fn ($c) => $period->criteria()->create(
+                        $c->only(['name', 'description', 'weight', 'min_score', 'max_score', 'sort_order'])
+                    ));
+            }
+
+            return $period;
+        });
+
+        return redirect()->route('hrd.periods.show', $period)->with('success', $sourceId
+            ? 'Periode dibuat dengan kriteria & bobot yang sama seperti periode sebelumnya. Periksa sebentar, lalu klik Buka Periode.'
+            : 'Periode dibuat. Lanjutkan dengan mengatur kriteria dan bobot.');
     }
 
     public function show(AssessmentPeriod $period, PeriodResetService $reset): View

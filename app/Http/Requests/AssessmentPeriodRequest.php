@@ -21,6 +21,10 @@ class AssessmentPeriodRequest extends FormRequest
             'start_date' => ['required', 'date'],
             'end_date' => ['required', 'date', 'after_or_equal:start_date'],
             'description' => ['nullable', 'string', 'max:500'],
+            // Hanya saat membuat periode baru: salin kriteria & bobot dari periode ini.
+            'copy_from' => $this->route('period')
+                ? ['prohibited']
+                : ['nullable', 'integer', Rule::exists('assessment_periods', 'id')],
         ];
     }
 

@@ -58,7 +58,7 @@
         @endif
 
         <div class="small text-muted ms-md-auto">
-            Nilai = rata-rata nilai total bulanan yang sudah ada nilainya.
+            Nilai = jumlah nilai bulanan ÷ jumlah bulan yang sudah ada nilainya (rata-rata).
         </div>
     </div>
 </div>
@@ -78,6 +78,7 @@
                     @endforeach
                     <th class="text-end">Apresiasi</th>
                     <th class="text-end">Teguran</th>
+                    <th class="text-end">Jumlah</th>
                     @include('recap._score-th', ['label' => 'Rata-rata'])
                     <th>Predikat</th>
                     <th></th>
@@ -108,13 +109,16 @@
                         @endforeach
                         <td class="text-end text-success">+{{ $r['bonus'] ?? 0 }}</td>
                         <td class="text-end" style="color:var(--bs-danger);">−{{ $r['penalty'] ?? 0 }}</td>
-                        <td class="text-end fw-bold">
-                            @if (($r['total'] ?? null) !== null)
-                                {{ number_format($r['total'], 2) }}
-                                <div class="small text-muted fw-normal">{{ $r['scored'] }} bulan</div>
+                        <td class="text-end">
+                            @if (($r['sum'] ?? null) !== null)
+                                {{ number_format($r['sum'], 2) }}
+                                <div class="small text-muted">{{ $r['scored'] }} bulan</div>
                             @else
                                 –
                             @endif
+                        </td>
+                        <td class="text-end fw-bold">
+                            {{ ($r['total'] ?? null) !== null ? number_format($r['total'], 2) : '–' }}
                         </td>
                         <td>
                             @if ($r['grade'] ?? null)
@@ -128,7 +132,7 @@
                         </td>
                     </tr>
                 @empty
-                    <tr><td colspan="{{ 7 + $rangePeriods->count() }}" class="text-center text-muted py-4">Tidak ada personel.</td></tr>
+                    <tr><td colspan="{{ 8 + $rangePeriods->count() }}" class="text-center text-muted py-4">Tidak ada personel.</td></tr>
                 @endforelse
             </tbody>
         </table>

@@ -58,7 +58,14 @@
                             <td><x-status-badge :status="$p->status" /></td>
                             <td class="text-end">{{ $p->criteria_count }}</td>
                             <td class="text-end">{{ $p->assessments_count }}</td>
-                            <td class="text-end"><a href="{{ route('hrd.periods.show', $p) }}" class="btn btn-sm btn-outline-primary">Kelola</a></td>
+                            <td class="text-end text-nowrap">
+                                @if ($p->criteria_count > 0)
+                                    <a href="{{ route('hrd.periods.create', ['dari' => $p->id]) }}" class="btn btn-sm btn-outline-secondary" title="Buat periode baru dengan kriteria yang sama">
+                                        <i class="bi bi-copy me-1"></i>Duplikat
+                                    </a>
+                                @endif
+                                <a href="{{ route('hrd.periods.show', $p) }}" class="btn btn-sm btn-outline-primary">Kelola</a>
+                            </td>
                         </tr>
                     @empty
                         <tr><td colspan="6"><x-empty icon="calendar-range">Belum ada periode.</x-empty></td></tr>
