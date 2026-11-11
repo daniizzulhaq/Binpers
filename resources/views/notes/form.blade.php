@@ -73,7 +73,7 @@
                                        id="subjectSearch"
                                        class="form-control"
                                        autocomplete="off"
-                                       placeholder="Cari nama, NRP, atau satuan…">
+                                       placeholder="Cari nama, NRP, jabatan, atau satuan…">
                             </div>
                             <div id="subjectSearchInfo" class="form-text mt-0 mb-1 d-none"></div>
                         @endif
@@ -87,12 +87,29 @@
                             </option>
 
                             @foreach ($subjects as $s)
+                                @php
+                                    $sPosition = $s->currentAssignment?->position?->name;
+                                    $sUnit = $s->currentAssignment?->unit?->name;
+                                @endphp
                                 <option value="{{ $s->id }}"
+                                        data-name="{{ $s->user->name }}"
+                                        data-nrp="{{ $s->nrp }}"
+                                        data-position="{{ $sPosition }}"
+                                        data-unit="{{ $sUnit }}"
                                     @selected((int) old('subject_id', $selected) === $s->id)>
-                                    {{ $s->user->name }} · {{ $s->nrp }}@if ($s->currentAssignment?->unit) · {{ $s->currentAssignment->unit->name }}@endif
+                                    {{ collect([$s->user->name, $s->nrp, $sPosition, $sUnit])->filter()->implode(' · ') }}
                                 </option>
                             @endforeach
                         </select>
+
+                        <div id="subjectDetail" class="border rounded bg-light px-3 py-2 mt-2 small d-none">
+                            <div class="fw-semibold" data-field="name"></div>
+                            <div class="row g-0 text-muted">
+                                <div class="col-4">NRP</div><div class="col-8 text-body" data-field="nrp"></div>
+                                <div class="col-4">Jabatan</div><div class="col-8 text-body" data-field="position"></div>
+                                <div class="col-4">Satuan</div><div class="col-8 text-body" data-field="unit"></div>
+                            </div>
+                        </div>
                     @endif
                 </div>
 
@@ -578,6 +595,35 @@
             search.addEventListener('keydown', function (e) {
                 if (e.key === 'Enter') e.preventDefault();
             });
+        })();
+    </script>
+
+    <script>
+        // Detail anggota terpilih (nama, NRP, jabatan, satuan) di bawah dropdown.
+        (function () {
+            const select = document.getElementById('subject_id');
+            const detail = document.getElementById('subjectDetail');
+
+            if (!select || !detail) return;
+
+            function render() {
+                const opt = select.selectedOptions[0];
+                const has = opt && opt.value !== '';
+
+                detail.classList.toggle('d-none', !has);
+                if (!has) return;
+
+                detail.querySelectorAll('[data-field]').forEach(function (el) {
+                    el.textContent = opt.dataset[el.dataset.field] || '–';
+                });
+            }
+
+            select.addEventListener('change', render);
+            // Pencarian bisa memilih otomatis tanpa memicu event change.
+            const search = document.getElementById('subjectSearch');
+            if (search) search.addEventListener('input', render);
+
+            render();
         })();
     </script>
 

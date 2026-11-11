@@ -256,7 +256,7 @@ class PerformanceNoteController extends Controller
     {
         return app(\App\Services\AssessorScopeService::class)
             ->assesseeQuery($me)
-            ->with(['user', 'currentAssignment.unit'])
+            ->with(['user', 'currentAssignment.unit', 'currentAssignment.position'])
             ->orderBy('nrp')
             ->get();
     }
@@ -264,7 +264,7 @@ class PerformanceNoteController extends Controller
     /** Semua personel aktif, kecuali akun HRD yang sedang login. */
     private function allSubjects(User $user)
     {
-        return Personnel::with(['user', 'currentAssignment.unit'])
+        return Personnel::with(['user', 'currentAssignment.unit', 'currentAssignment.position'])
             ->where('user_id', '!=', $user->id)
             ->whereHas('user', fn ($q) => $q->where('is_active', true))
             ->orderBy('nrp')
